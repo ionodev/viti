@@ -293,7 +293,9 @@ kbd { background: var(--panel-2); border: 1px solid var(--border-2); border-bott
 .graph-help { left: 14px; bottom: 14px; }
 
 /* the add box on top of the Open list: write and press Enter; under it the branch, and a report's screenshots */
-.add-opts { flex: 1 1 100%; display: flex; gap: 8px; min-width: 0; }
+.add-opts { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.add-opts .prio-slide { flex: 1 1 210px; }
+.add-opts .branch-select { flex: 1 1 140px !important; }
 .todo-form .add-opts .branch-select { flex: 1 1 0; min-width: 0; max-width: none; }
 .add-shots { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 6px; }
 .add-shot { position: relative; }
@@ -314,7 +316,7 @@ kbd { background: var(--panel-2); border: 1px solid var(--border-2); border-bott
 .ps-notch { position: absolute; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: var(--border-2); transition: background-color .28s; }
 .ps-thumb { position: absolute; top: 50%; left: 0; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: var(--lvl); border: 2px solid var(--panel); box-shadow: 0 0 0 1px var(--lvl), 0 1px 3px rgba(0, 0, 0, .25); transition: left .3s cubic-bezier(.25, .8, .35, 1), background-color .3s, box-shadow .3s; }
 .prio-slide:hover .ps-thumb { box-shadow: 0 0 0 1px var(--lvl), 0 0 0 5px color-mix(in srgb, var(--lvl) 18%, transparent); }
-.prio-name { flex: none; width: 70px; font: 600 12px var(--font); color: var(--lvl); white-space: nowrap; transition: color .28s; }
+.prio-name { flex: none; min-width: 52px; font: 600 12px var(--font); color: var(--lvl); white-space: nowrap; transition: color .28s; }
 body.noanim .ps-thumb, body.noanim .ps-fill { transition: none; }
 
 /* a mailbox's email source (mailsetup.js): the bar above it, and the dialogs to link a Gmail label */

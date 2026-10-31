@@ -502,7 +502,7 @@ function categoryMenu(x, y, c) {
 // a new section in a group of the menu (Sections, Reports, or one of your categories): a board, or a list of reports
 async function newSectionIn(c, preferred = 'board') {
   const input = h('input', { type: 'text', maxlength: '60', placeholder: 'Name' });
-  const kind = h('select', {}, h('option', { value: 'board' }, 'Board (notes, text, images)'), h('option', { value: 'bugs' }, 'Reports (Open, Closed, Trash)'), h('option', { value: 'mail' }, 'Mailbox (reads an email folder)'));
+  const kind = h('select', {}, h('option', { value: 'board' }, 'Board'), h('option', { value: 'bugs' }, 'Reports'), h('option', { value: 'mail' }, 'Mailbox'));
   kind.value = preferred;
   input.addEventListener('keydown', (e) => e.key === 'Enter' && document.querySelector('.overlay .btn:not(.ghost)')?.click());
   const body = h('div', {}, h('label', {}, 'Name'), input, h('label', { style: { marginTop: '12px' } }, 'Kind'), kind);

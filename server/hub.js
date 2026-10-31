@@ -98,6 +98,8 @@ export class Hub extends DurableObject {
       } catch {}
     }
     this.ensureMail();
+    // (to-dos and reports tagged with Viti's backup branch, before it was left out of the branches: no tag)
+    this.run("UPDATE bugs SET branch='' WHERE lower(COALESCE(branch, '')) IN ('viti-data', 'hub-data')");
     if (this.getMeta('seeded')) {
       // the Status section was dropped
       if (!this.getMeta('layout6')) {
@@ -636,6 +638,11 @@ export class Hub extends DurableObject {
   }
   // { list: [names, the most recently committed first], latest, source }: from GitHub (kept for 10 minutes), else the
   // BRANCHES setting (names separated by commas, the first being the latest), else nothing
+  // branches that are not about the project: Viti's own backup branch (and the older one's), and the old "viti" tag
+  hiddenBranch(name) {
+    const n = String(name || '').toLowerCase();
+    return n === 'viti' || n === 'viti-data' || n === 'hub-data' || n === String(this.env.GITHUB_BRANCH || '').toLowerCase();
+  }
   async branches() {
     let c = null;
     try {
@@ -645,9 +652,9 @@ export class Hub extends DurableObject {
       try {
         const g = await repoBranches(this.env);
         if (g) {
-          const names = g.branches.map((b) => b.name).filter((n) => n.toLowerCase() !== 'viti');
+          const names = g.branches.map((b) => b.name).filter((n) => !this.hiddenBranch(n));
           // the latest is the most recently committed branch, not counting the main one (that one always has the newest commits)
-          const latest = g.branches.find((b) => b.name !== g.def && b.name.toLowerCase() !== 'viti')?.name || g.def || names[0] || '';
+          const latest = g.branches.find((b) => b.name !== g.def && !this.hiddenBranch(b.name))?.name || g.def || names[0] || '';
           c = { at: Date.now(), list: names, latest, source: 'github', error: '' };
           this.setMeta('branches', JSON.stringify(c));
         }
@@ -665,7 +672,10 @@ export class Hub extends DurableObject {
       const fixed = String(this.env.BRANCHES || '').split(',').map((x) => this.cleanBranch(x)).filter((x) => x && x.toLowerCase() !== 'viti');
       if (fixed.length) return { list: fixed, latest: fixed[0], source: 'setting', error: c.error };
     }
-    return { list: c.list, latest: c.latest, source: c.source, error: c.error || '' };
+    // (a list kept from before may still hold the backup branch)
+    const list = c.list.filter((n) => !this.hiddenBranch(n));
+    const latest = this.hiddenBranch(c.latest) ? list.find((n) => !['main', 'master'].includes(n)) || list[0] || '' : c.latest;
+    return { list, latest, source: c.source, error: c.error || '' };
   }
 
   // ------------------------------------------------------------------ bug reports

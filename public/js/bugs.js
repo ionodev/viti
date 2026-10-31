@@ -637,29 +637,30 @@ export class Bugs {
     this.addPrio = this.prioSlider();
     this.cols.open.insertBefore(h('div', { class: 'todo-form' }, this.input, this.shotBox, h('div', { class: 'add-opts' }, this.addPrio.el, this.addBranch)), this.bodies.open);
   }
-  // the priority of a new one: a slider with four notches (none, low, medium, high). The handle glides to
+  // the priority of a new one: a slider with three notches (low, medium, high; low to begin with). The handle glides to
   // the notch (click one, drag, or use the arrow keys), easing to a stop, and takes the level's colour.
   prioSlider() {
-    const LEVELS = ['', 'low', 'medium', 'high'];
+    const LEVELS = ['low', 'medium', 'high'];
+    const last = LEVELS.length - 1;
     let at = 0;
     const thumb = h('span', { class: 'ps-thumb' });
     const fill = h('span', { class: 'ps-fill' });
-    const track = h('span', { class: 'ps-track' }, h('span', { class: 'ps-line' }), fill, LEVELS.map((_, i) => h('span', { class: 'ps-notch', style: { left: `${(i / 3) * 100}%` } })), thumb);
+    const track = h('span', { class: 'ps-track' }, h('span', { class: 'ps-line' }), fill, LEVELS.map((_, i) => h('span', { class: 'ps-notch', style: { left: `${(i / last) * 100}%` } })), thumb);
     const name = h('span', { class: 'prio-name' });
-    const el = h('div', { class: 'prio-slide', role: 'slider', tabindex: '0', 'aria-label': 'Priority', 'aria-valuemin': '0', 'aria-valuemax': '3', title: 'The priority (a deadline comes with it, as set in Settings)' }, track, name);
+    const el = h('div', { class: 'prio-slide', role: 'slider', tabindex: '0', 'aria-label': 'Priority', 'aria-valuemin': '0', 'aria-valuemax': '2', title: 'The priority (a deadline comes with it, as set in Settings)' }, track, name);
     const set = (i) => {
-      at = Math.max(0, Math.min(3, i));
+      at = Math.max(0, Math.min(last, i));
       i = at;
       const k = LEVELS[i];
-      thumb.style.left = fill.style.width = `${(i / 3) * 100}%`;
-      name.textContent = k ? PRIORITY[k] : 'No priority';
-      el.dataset.level = k || 'none';
+      thumb.style.left = fill.style.width = `${(i / last) * 100}%`;
+      name.textContent = PRIORITY[k];
+      el.dataset.level = k;
       el.setAttribute('aria-valuenow', String(i));
       el.setAttribute('aria-valuetext', name.textContent);
     };
     const nearest = (x) => {
       const r = track.getBoundingClientRect();
-      return Math.round(((x - r.left) / r.width) * 3);
+      return Math.round(((x - r.left) / r.width) * last);
     };
     el.addEventListener('pointerdown', (e) => {
       if (e.button !== 0) return;
@@ -675,7 +676,7 @@ export class Bugs {
     el.addEventListener('keydown', (e) => {
       const step = { ArrowRight: 1, ArrowUp: 1, ArrowLeft: -1, ArrowDown: -1 }[e.key];
       if (step) (e.preventDefault(), set(at + step));
-      else if (e.key === 'Home' || e.key === 'End') (e.preventDefault(), set(e.key === 'Home' ? 0 : 3));
+      else if (e.key === 'Home' || e.key === 'End') (e.preventDefault(), set(e.key === 'Home' ? 0 : last));
     });
     set(0);
     return {
@@ -703,7 +704,7 @@ export class Bugs {
     const shots = this.pending;
     const priority = this.addPrio.value;
     this.input.value = '';
-    this.addPrio.value = '';
+    this.addPrio.value = 'low';
     this.pending = [];
     this.drawShots();
     this.fitAdd();
