@@ -1,10 +1,10 @@
-// Where a mailbox's email comes from (and goes out from): one folder (a Gmail label, an Outlook folder) of an
-// email account you connected. The bar above the mailbox says which (or offers to link one), fetches now on request, and the
-// dialogs connect Gmail (an app password) or Outlook (Sign in with Microsoft) and pick the folder.
-// What is linked, and the accounts, are kept by the app on this computer (/app/mail/*, app/mail.js).
+// Where a mailbox's email comes from (and goes out from): one label of a Gmail account you connected. The bar
+// above the mailbox says which (or offers to link one), fetches now on request, and starts a new email; the
+// dialogs connect Gmail (an app password) and pick the label. What is linked, and the accounts, are kept by the
+// app on this computer (/app/mail/*, app/mail.js).
 import { h, ago, toast, modal } from './ui.js';
 
-const PROVIDER = { gmail: 'Gmail', outlook: 'Outlook' };
+const PROVIDER = { gmail: 'Gmail' };
 const APP_PASSWORDS = 'https://myaccount.google.com/apppasswords';
 
 async function call(method, path, body) {
@@ -60,7 +60,7 @@ export function sourceBar(section, { compose } = {}) {
     const link = st.links[section];
     const acc = link && st.accounts.find((a) => a.id === link.account);
     if (!link || !acc) {
-      bar.replaceChildren(h('span', { class: 'ms-text' }, h('b', {}, 'No email folder linked'), h('small', {}, st.private ? 'Link a Gmail label or Outlook folder, and its mail comes in here (and you can reply from Viti).' : 'This repository is public, so Viti does not put email in it.')), st.private ? h('button', { class: 'btn small', onclick: () => link_(section, st).then(draw) }, 'Link a folder') : null);
+      bar.replaceChildren(h('span', { class: 'ms-text' }, h('b', {}, 'No Gmail label linked'), h('small', {}, st.private ? 'Link a Gmail label, and its mail comes in here (and you can reply from Viti).' : 'This repository is public, so Viti does not put email in it.')), st.private ? h('button', { class: 'btn small', onclick: () => link_(section, st).then(draw) }, 'Link a label') : null);
       return;
     }
     const when = link.fetched ? `checked ${ago(link.fetched)}` : 'not checked yet';
@@ -80,7 +80,7 @@ export function sourceBar(section, { compose } = {}) {
       h('span', { class: 'ms-text' }, h('b', {}, link.folderName), h('small', { title: link.error || '' }, `${PROVIDER[acc.provider]} · ${acc.address} · `, link.error ? h('span', { class: 'ms-bad' }, 'could not check') : when)),
       fetchNow,
       compose ? h('button', { class: 'ms-btn', title: 'New email', onclick: compose }, '✎') : null,
-      h('button', { class: 'ms-btn', title: 'Link another folder, or unlink', onclick: () => link_(section, st).then(draw) }, '⚙'),
+      h('button', { class: 'ms-btn', title: 'Link another label, or unlink', onclick: () => link_(section, st).then(draw) }, '⚙'),
     );
   };
   draw();
@@ -112,13 +112,13 @@ async function link_(section, st) {
   const body = h(
     'div',
     { class: 'ms-dialog' },
-    h('p', {}, 'Viti reads one folder of your email (a Gmail label or an Outlook folder) into this mailbox, every couple of minutes while Viti is open, and sends your replies from the same account (only when you press Send). It never moves or deletes your mail. What comes in and goes out is backed up to the repository with the rest of the project.'),
+    h('p', {}, 'Viti reads one label of your Gmail into this mailbox, every couple of minutes while Viti is open, and sends your replies from the same account (only when you press Send). It never moves or deletes your mail. What comes in and goes out is backed up to the repository with the rest of the project.'),
     h('label', {}, 'Account'),
     list,
-    h('div', { class: 'ms-connect' }, h('button', { class: 'btn small ghost', type: 'button', onclick: () => add(connectGmail) }, '+ Connect Gmail'), st.outlook ? h('button', { class: 'btn small ghost', type: 'button', onclick: () => add(connectOutlook) }, '+ Connect Outlook') : h('span', { class: 'ms-soon', title: 'Outlook needs Viti registered with Microsoft first' }, 'Outlook: coming soon')),
+    h('div', { class: 'ms-connect' }, h('button', { class: 'btn small ghost', type: 'button', onclick: () => add(connectGmail) }, '+ Connect Gmail')),
     current ? h('p', { class: 'ms-unlink' }, h('a', { href: '#', onclick: async (e) => (e.preventDefault(), await call('DELETE', `/app/mail/links/${section}`), document.querySelector('.overlay:last-of-type')?._close(true)) }, 'Unlink this mailbox'), ' (the mail already here stays).') : null,
   );
-  const { done } = working('Link an email folder', body, 'Next: pick a folder', async () => {
+  const { done } = working('Link a Gmail label', body, 'Next: pick a label', async () => {
     if (!chosen) throw new Error('Connect an email account first.');
     return chosen;
   });
@@ -128,24 +128,24 @@ async function link_(section, st) {
 }
 
 async function pickFolder(section, acc) {
-  const search = h('input', { type: 'text', placeholder: 'Search folders…' });
-  const list = h('div', { class: 'ms-folders' }, h('p', { class: 'ms-none' }, 'Getting the folders…'));
+  const search = h('input', { type: 'text', placeholder: 'Search labels…' });
+  const list = h('div', { class: 'ms-folders' }, h('p', { class: 'ms-none' }, 'Getting the labels…'));
   let folders = [];
   let chosen = null;
   const paint = () => {
     const q = search.value.trim().toLowerCase();
     const shown = folders.filter((f) => !q || f.name.toLowerCase().includes(q));
-    list.replaceChildren(...(shown.length ? shown.map((f) => h('button', { type: 'button', class: 'ms-folder' + (chosen?.id === f.id ? ' on' : ''), onclick: () => ((chosen = f), paint()) }, f.name)) : [h('p', { class: 'ms-none' }, folders.length ? 'No folder matches.' : 'No folders found.')]));
+    list.replaceChildren(...(shown.length ? shown.map((f) => h('button', { type: 'button', class: 'ms-folder' + (chosen?.id === f.id ? ' on' : ''), onclick: () => ((chosen = f), paint()) }, f.name)) : [h('p', { class: 'ms-none' }, folders.length ? 'No label matches.' : 'No labels found.')]));
   };
   search.addEventListener('input', paint);
-  const body = h('div', { class: 'ms-dialog' }, h('p', {}, acc.provider === 'gmail' ? 'Pick the label to read. Tip: make one called "Viti" in Gmail, and a filter that puts the right mail in it.' : 'Pick the folder to read. Tip: make one called "Viti" in Outlook, and a rule that moves the right mail to it.'), search, list);
+  const body = h('div', { class: 'ms-dialog' }, h('p', {}, 'Pick the label to read. Tip: make one called "Viti" in Gmail, and a filter that puts the right mail in it.'), search, list);
   call('GET', `/app/mail/accounts/${acc.id}/folders`)
     .then((r) => ((folders = r.folders), (chosen = folders.find((f) => /^viti$/i.test(f.name)) || null), paint()))
     .catch((x) => list.replaceChildren(h('p', { class: 'mail-err' }, x.message)));
-  const { done } = working(`Pick a folder · ${acc.address}`, body, 'Link and fetch', async () => {
-    if (!chosen) throw new Error('Pick a folder.');
+  const { done } = working(`Pick a label · ${acc.address}`, body, 'Link and fetch', async () => {
+    if (!chosen) throw new Error('Pick a label.');
     const r = await call('PUT', `/app/mail/links/${section}`, { account: acc.id, folder: chosen.id, folderName: chosen.name });
-    toast(r.error ? r.error : r.added ? `Linked. ${r.added} email${r.added === 1 ? '' : 's'} came in.` : 'Linked. The folder is empty for now.', !!r.error);
+    toast(r.error ? r.error : r.added ? `Linked. ${r.added} email${r.added === 1 ? '' : 's'} came in.` : 'Linked. The label is empty for now.', !!r.error);
   });
   return done;
 }
@@ -178,32 +178,4 @@ async function connectGmail() {
   const { done } = working('Connect Gmail', body, 'Connect', async () => (await call('POST', '/app/mail/gmail', { address: address.value, password: password.value })).account);
   const acc = await done;
   return acc && acc !== true ? acc : null;
-}
-
-// Outlook: "Sign in with Microsoft" (a code to enter at microsoft.com/devicelogin)
-async function connectOutlook() {
-  let start;
-  try {
-    start = await call('POST', '/app/mail/outlook/start');
-  } catch (x) {
-    return toast(x.message, true), null;
-  }
-  const status = h('p', { class: 'ms-status' }, 'Waiting for you to approve Viti at Microsoft…');
-  const open = () => (navigator.clipboard?.writeText(start.userCode).catch(() => {}), window.open(start.url));
-  const body = h('div', { class: 'ms-dialog ms-device' }, h('p', {}, 'Enter this code at Microsoft and sign in with your Outlook account, then approve Viti (it reads the folder you pick).'), h('div', { class: 'ms-code' }, start.userCode), h('button', { class: 'btn', type: 'button', onclick: open }, 'Copy the code and open Microsoft'), status);
-  let account = null;
-  const done = modal('Connect Outlook', body, [{ label: 'Cancel', value: false }]);
-  const overlay = document.querySelector('.overlay:last-of-type');
-  open();
-  const poll = async () => {
-    if (!overlay.isConnected) return;
-    const r = await call('POST', '/app/mail/outlook/poll').catch(() => ({ status: 'pending' }));
-    if (r.status === 'pending') return setTimeout(poll, (r.interval || start.interval || 5) * 1000);
-    if (r.status === 'done') return (account = r.account), overlay._close(true);
-    status.textContent = r.status === 'denied' ? 'The sign-in was cancelled at Microsoft.' : r.error || 'The code ran out. Close this and try again.';
-    status.classList.add('bad');
-  };
-  setTimeout(poll, (start.interval || 5) * 1000);
-  await done;
-  return account;
 }

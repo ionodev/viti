@@ -87,9 +87,13 @@ export async function startServer({ root, dataDir, seal, unseal, port = 0, key: 
           continue;
         }
         try {
-          const r = await mail.fetchNew(acc, cred, link.folder, link.state, keepCred(acc.id));
+          const hub = current?.host.hub;
+          // (emails you sent yourself, before Viti put them in Sent: they go there now)
+          hub?.ownToSent(section, acc.address);
+          const r = await mail.fetchNew(cred, link.folder, link.state);
           let added = 0;
-          for (const m of r.messages) if (current?.host.hub.importMail(section, m)) added++;
+          // what you sent yourself (Gmail labels your replies with the conversation's label) goes to Sent
+          for (const m of r.messages) if (m.own ? hub?.importSent(section, { ...m, from: acc.address }) : hub?.importMail(section, m)) added += m.own ? 0 : 1;
           Object.assign(link, { state: r.state, fetched: Date.now(), error: '' });
           out[section] = { added };
         } catch (e) {
@@ -106,7 +110,6 @@ export async function startServer({ root, dataDir, seal, unseal, port = 0, key: 
   // every two minutes while a project is open
   const mailTimer = setInterval(() => fetchMail().catch((e) => console.error('mail:', e.message)), 2 * 60 * 1000);
   mailTimer.unref?.();
-  let msDevice = null; // a "Sign in with Microsoft" under way
 
   // ---- GitHub: is this a repository the token can write to, and who is the token's owner
   async function gh(token, p) {
@@ -314,7 +317,7 @@ export async function startServer({ root, dataDir, seal, unseal, port = 0, key: 
     // ---- mail (for the open project's mailboxes)
     if (p === '/app/mail' && req.method === 'GET') {
       const proj = current && cfg.projects.find((x) => x.id === current.id);
-      return send(200, { ok: true, accounts: cfg.mail.accounts, links: (current && cfg.mail.links[current.id]) || {}, outlook: mail.outlookReady(), private: !!proj?.private });
+      return send(200, { ok: true, accounts: cfg.mail.accounts, links: (current && cfg.mail.links[current.id]) || {}, private: !!proj?.private });
     }
     if (p === '/app/mail/gmail' && req.method === 'POST') {
       const address = String(body.address || '').trim().toLowerCase();
@@ -322,7 +325,7 @@ export async function startServer({ root, dataDir, seal, unseal, port = 0, key: 
       if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(address)) return send(400, { ok: false, error: 'Write the whole email address.' });
       if (password.length < 8) return send(400, { ok: false, error: 'Paste the app password (16 letters).' });
       try {
-        await mail.gmailFolders({ address, password }); // (it works, or says why not)
+        await mail.folders({ address, password }); // (it works, or says why not)
       } catch (e) {
         return send(400, { ok: false, error: e.message });
       }
@@ -332,38 +335,12 @@ export async function startServer({ root, dataDir, seal, unseal, port = 0, key: 
       saveCfg();
       return send(200, { ok: true, account: acc });
     }
-    if (p === '/app/mail/outlook/start' && req.method === 'POST') {
-      if (!mail.outlookReady()) return send(400, { ok: false, error: 'Outlook is not set up in this build of Viti yet.' });
-      try {
-        const r = await mail.outlookStart();
-        msDevice = { code: r.device_code, until: Date.now() + (r.expires_in || 900) * 1000, interval: r.interval || 5 };
-        return send(200, { ok: true, userCode: r.user_code, url: r.verification_uri || 'https://microsoft.com/devicelogin', interval: msDevice.interval });
-      } catch (e) {
-        return send(502, { ok: false, error: e.message });
-      }
-    }
-    if (p === '/app/mail/outlook/poll' && req.method === 'POST') {
-      if (!msDevice || Date.now() > msDevice.until) return send(200, { ok: true, status: 'expired' });
-      const r = await mail.outlookPoll(msDevice.code).catch((e) => ({ status: 'failed', error: e.message }));
-      if (r.status === 'pending') {
-        if (r.slow) msDevice.interval += 5;
-        return send(200, { ok: true, status: 'pending', interval: msDevice.interval });
-      }
-      msDevice = null;
-      if (r.status !== 'done') return send(200, { ok: true, ...r });
-      const address = String(r.address || '').toLowerCase();
-      let acc = cfg.mail.accounts.find((a) => a.provider === 'outlook' && a.address === address);
-      if (!acc) cfg.mail.accounts.push((acc = { id: crypto.randomBytes(5).toString('hex'), provider: 'outlook', address }));
-      keepCred(acc.id)({ refresh: r.refresh });
-      saveCfg();
-      return send(200, { ok: true, status: 'done', account: acc });
-    }
     if ((m0 = p.match(/^\/app\/mail\/accounts\/([a-f0-9]+)(\/folders)?$/))) {
       const acc = cfg.mail.accounts.find((a) => a.id === m0[1]);
       if (!acc) return send(404, { ok: false, error: 'That account is not connected.' });
       if (m0[2] && req.method === 'GET') {
         try {
-          return send(200, { ok: true, folders: await mail.folders(acc, credOf(acc.id), keepCred(acc.id)) });
+          return send(200, { ok: true, folders: await mail.folders(credOf(acc.id)) });
         } catch (e) {
           return send(502, { ok: false, error: e.message });
         }
@@ -415,7 +392,7 @@ export async function startServer({ root, dataDir, seal, unseal, port = 0, key: 
       }
       const msg = { to: to.join(', '), cc: cc.join(', '), subject: String(body.subject || '').slice(0, 300), text, inReplyTo: /^<.+>$/.test(inReplyTo) ? inReplyTo : '', references: /^<.+>$/.test(inReplyTo) ? inReplyTo : '' };
       try {
-        const r = await mail.send(acc, credOf(acc.id), msg, keepCred(acc.id));
+        const r = await mail.send(credOf(acc.id), msg);
         const bug = current.host.hub.recordSent(m0[1], { to: msg.to, toName: String(body.toName || ''), from: acc.address, subject: msg.subject, text, messageId: r.messageId });
         return send(200, { ok: true, id: bug?.id, from: acc.address });
       } catch (e) {

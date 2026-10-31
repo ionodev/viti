@@ -1,7 +1,7 @@
 {
   "name": "viti-desktop",
   "productName": "Viti",
-  "version": "0.1.5",
+  "version": "0.2.0",
   "private": true,
   "description": "Viti: a project page for any GitHub repository (boards, chat, to-dos, reports), as a Windows app",
   "main": "app/main.js",
@@ -29,7 +29,7 @@
   "build": {
     "appId": "com.vardengames.viti",
     "productName": "Viti",
-    "copyright": "© 2026 Varden Games",
+    "copyright": "\u00a9 2026 Varden Games",
     "directories": {
       "output": "dist",
       "buildResources": "build"
@@ -63,5 +63,10 @@
     "portable": {
       "artifactName": "Viti-${version}-portable.${ext}"
     }
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ionodev/viti.git"
+  },
+  "homepage": "https://github.com/ionodev/viti"
 }

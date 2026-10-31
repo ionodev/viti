@@ -700,11 +700,46 @@ export class Hub extends DurableObject {
   // an email sent from a mailbox (app/server.js): kept in its Sent (to whom in name and email, from whom in ua)
   recordSent(section, m) {
     if (this.section(section)?.kind !== 'mail') return null;
-    const row = this.insertBug({ name: m.toName || m.to, email: m.to, ua: 'from:' + m.from, page: clip('sent:' + (m.messageId || rid(12)), 300), message: m.text, images: [], source: 'sent', ts: Date.now(), section, subject: m.subject });
+    const row = this.insertBug({ name: m.toName || m.to, email: m.to, ua: 'from:' + m.from, page: clip('sent:' + (m.messageId || rid(12)), 300), message: m.text, images: [], source: 'sent', ts: m.ts || Date.now(), section, subject: m.subject });
     this.run('UPDATE bugs SET seen=1 WHERE id=?', row.id);
     const bug = this.bugOut({ ...row, seen: 1 });
     this.bcAll({ t: 'bug', bug });
     return bug;
+  }
+
+  // an email you sent yourself, found in the linked label (Gmail labels your replies with the conversation's
+  // label): into Sent, unless it is already there (sent from Viti: the same Message-ID, or the same subject to
+  // the same person within ten minutes). -> true if it was new
+  importSent(section, m) {
+    if (this.section(section)?.kind !== 'mail') return false;
+    const page = clip('sent:' + m.ref, 300);
+    if (this.one('SELECT id FROM bugs WHERE page=? AND section=?', page, section)) return false;
+    if (this.one("SELECT id FROM bugs WHERE section=? AND source='sent' AND subject=? AND lower(email)=lower(?) AND abs(ts-?) < 600000", section, clip(m.subject, 200), m.to || '', m.ts || 0)) return false;
+    // (one that came in before as received mail is moved over instead)
+    const was = this.one('SELECT id FROM bugs WHERE page=? AND section=?', clip('mail:' + m.ref, 300), section);
+    if (was) this.dropBug(was.id);
+    this.recordSent(section, { to: m.to || '', toName: m.toName, from: m.from, subject: m.subject, text: m.text, messageId: m.ref, ts: m.ts });
+    return true;
+  }
+  // emails from your own address that came into the Inbox before Viti knew better: the ones Viti also has in
+  // Sent are dropped, the others become Sent (to whom is not known for those)
+  ownToSent(section, address) {
+    const rows = this.q("SELECT * FROM bugs WHERE section=? AND source='mail' AND lower(email)=lower(?)", section, address || '');
+    for (const r of rows) {
+      const twin = this.one("SELECT id FROM bugs WHERE section=? AND source='sent' AND subject=? AND abs(ts-?) < 600000", section, r.subject || '', r.ts);
+      if (twin) {
+        this.dropBug(r.id);
+        continue;
+      }
+      this.run("UPDATE bugs SET source='sent', name='', email='', ua=?, page=?, seen=1 WHERE id=?", 'from:' + address, clip('sent:' + String(r.page || '').replace(/^mail:/, ''), 300), r.id);
+      this.markDirty('bug:' + r.id, 'bugs-index');
+      this.bcAll({ t: 'bug', bug: this.bugOut(this.one('SELECT * FROM bugs WHERE id=?', r.id)) });
+    }
+  }
+  dropBug(id) {
+    this.run('DELETE FROM bugs WHERE id=?', id);
+    this.markDirty('bug-del:' + id, 'bugs-index');
+    this.bcAll({ t: 'bug-del', id });
   }
 
   // ------------------------------------------------------------------ images (in chunks: a row holds at most 2 MB)
