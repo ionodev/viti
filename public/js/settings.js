@@ -1,5 +1,6 @@
 // Personal settings, kept in this browser (so each device has its own), and the little sounds and pop-ups they control.
 import { appearanceControls } from './appearance.js';
+import { openAbout } from './about.js';
 import { h, modal, toast } from './ui.js';
 
 const KEY = 'hub.settings';
@@ -156,6 +157,7 @@ export async function openSettings() {
       return h('div', { class: 'setvol' }, h('span', {}, 'Count from'), sel);
     })(),
     h('p', { class: 'hint' }, 'These settings are kept on this computer.'),
+    h('button', { class: 'btn small ghost about-btn', type: 'button', onclick: () => openAbout() }, 'About Viti'),
   );
   await modal('Settings', body, [{ label: 'Done', value: true, primary: true }]);
 }

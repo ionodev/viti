@@ -95,3 +95,25 @@ details.how li { margin: 4px 0; }
 .repo-empty { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 26px 10px; color: var(--text-3); font-size: 13px; }
 .repo-other { margin: 12px 0 0 !important; font-size: 13px; }
 .device-note { margin: 0 !important; font-size: 12.5px; color: var(--text-3) !important; max-width: 420px; }
+
+/* a project's card: what is going on in it, and its backup */
+.proj-stats { display: flex; flex-wrap: nowrap; gap: 6px; min-height: 24px; overflow: hidden; font-size: 12.5px; color: var(--text-2); }
+.proj-stats.quiet { color: var(--text-3); align-items: center; }
+.proj-stats .stat { flex: none; padding: 2px 9px; border-radius: 999px; background: var(--panel-2); border: 1px solid var(--border); white-space: nowrap; }
+.proj-stats .stat b { font-weight: 650; color: var(--text); }
+.proj-stats .stat.new { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent-text); }
+.proj-stats .stat.new b { color: var(--accent-text); }
+.proj-foot .bk { white-space: nowrap; }
+.proj-foot .bk.ok::before { content: ''; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--ok); margin-right: 6px; vertical-align: 1px; }
+.proj-foot .bk.bad { color: var(--danger); }
+
+/* the welcome */
+.welcome { display: flex; flex-direction: column; align-items: flex-start; }
+.wl-mark { width: 52px; height: 52px; margin-bottom: 12px; }
+.wl-lead { color: var(--text-2); }
+.welcome ol { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; width: 100%; }
+.welcome li { display: flex; gap: 12px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel-2); }
+.wl-n { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--accent-ink); font: 700 12px var(--font); }
+.welcome li div { display: flex; flex-direction: column; }
+.welcome li b { font: 600 14px var(--font); }
+.welcome li small { color: var(--text-3); font-size: 12.5px; }

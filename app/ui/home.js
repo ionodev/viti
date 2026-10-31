@@ -3,6 +3,7 @@
 // works, for a repository the sign-in cannot reach.) Talks to the app's own server (/app/*, app/server.js).
 import { h, ago, toast, modal, menu } from '/js/ui.js';
 import { appearanceControls } from '/js/appearance.js';
+import { openAbout } from '/js/about.js';
 
 const TOKEN_URL = 'https://github.com/settings/personal-access-tokens/new';
 let state = { projects: [] };
@@ -18,6 +19,28 @@ async function load() {
   state = await call('GET', '/app/state');
   drawAccount();
   draw();
+  // the very first time (no sign-in, no projects): a short welcome
+  if (!state.account && !state.projects.length && !state.prefs?.welcomed && !welcomed) welcome();
+}
+
+// ---- the welcome: what Viti is, and the two steps to a first project
+let welcomed = false;
+async function welcome() {
+  welcomed = true;
+  const step = (n, title, text) => h('li', {}, h('span', { class: 'wl-n' }, String(n)), h('div', {}, h('b', {}, title), h('small', {}, text)));
+  const body = h(
+    'div',
+    { class: 'welcome' },
+    h('span', { class: 'cairn-mark wl-mark' }),
+    h('p', { class: 'wl-lead' }, 'A shared workspace for your project on GitHub: boards, a chat, a to-do list, reports, a calendar and a mailbox, all in one window, and all of it backed up to the repository.'),
+    h('ol', {}, step(1, 'Sign in with GitHub', 'You enter a short code on GitHub, and approve Viti.'), step(2, 'Pick a repository', 'One you can write to. Viti never changes your code.'), step(3, 'Get going', 'Add your first to-do, or start a board.')),
+  );
+  const r = await modal('Welcome to Viti', body, [
+    { label: 'Later', value: false },
+    { label: state.canSignIn ? 'Sign in with GitHub' : 'Connect a repository', value: true, primary: true },
+  ]);
+  call('PUT', '/app/prefs', { welcomed: true }).catch(() => {});
+  if (r === true) connect();
 }
 
 // top right: who you are signed in as (click for Sign out), or the button to sign in
@@ -63,8 +86,26 @@ function card(p) {
     more,
     h('div', { class: 'proj-top' }, h('span', { class: 'proj-tile' }, name.charAt(0).toUpperCase()), h('span', { class: 'proj-name' }, h('b', {}, name), h('small', {}, owner))),
     h('div', { class: 'proj-meta' }, h('span', { class: 'tag' }, p.private ? 'Private' : 'Public'), p.open ? h('span', { class: 'tag live' }, 'Open now') : null, p.hasToken ? null : h('span', { class: 'tag warn' }, 'Not signed in')),
-    h('div', { class: 'proj-foot' }, h('span', { class: 'who' }, p.user?.avatar ? h('img', { src: p.user.avatar, alt: '' }) : null, h('span', {}, p.user?.name || '')), h('span', {}, p.opened ? `Opened ${ago(p.opened)}` : 'Not opened yet')),
+    activity(p),
+    h('div', { class: 'proj-foot' }, h('span', { class: 'who' }, p.user?.avatar ? h('img', { src: p.user.avatar, alt: '' }) : null, h('span', {}, p.user?.name || '')), backup(p)),
   );
+}
+
+// what is going on in it: open to-dos and reports, new mail (only what there is)
+function activity(p) {
+  const s = p.stats;
+  if (!s) return h('div', { class: 'proj-stats quiet' }, p.opened ? '' : 'Not opened on this computer yet');
+  const n = (count, one, many, cls = '') => (count ? h('span', { class: 'stat ' + cls }, h('b', {}, String(count)), ' ', count === 1 ? one : many) : null);
+  const items = [n(s.todos, 'to-do', 'to-dos'), n(s.reports, 'open report', 'open reports'), n(s.mail, 'new email', 'new emails', 'new')].filter(Boolean);
+  return h('div', { class: 'proj-stats' + (items.length ? '' : ' quiet') }, ...(items.length ? items : ['Nothing open']));
+}
+// its backup, on the right of the card's foot
+function backup(p) {
+  const s = p.stats;
+  const opened = p.opened ? `Opened ${ago(p.opened)}` : 'Not opened yet';
+  if (!s) return h('span', {}, opened);
+  if (s.backupError) return h('span', { class: 'bk bad', title: opened }, 'Backup failed');
+  return h('span', { class: 'bk' + (s.backedUp ? ' ok' : ''), title: opened }, s.backedUp ? `Backed up ${ago(s.backedUp)}` : 'Not backed up yet');
 }
 
 function projectMenu(e, p) {
@@ -336,5 +377,6 @@ async function remove(p) {
   }
 }
 
+document.getElementById('about').addEventListener('click', () => openAbout());
 document.getElementById('look').addEventListener('click', () => modal('Appearance', h('div', { class: 'look' }, ...appearanceControls()), [{ label: 'Done', value: true, primary: true }]));
 load().catch((e) => toast(e.message, true));

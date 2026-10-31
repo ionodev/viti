@@ -24,12 +24,33 @@ const unseal = (s) => {
 let win = null;
 let srv = null;
 
+// a log of what happens (and goes wrong), for the About page's "Open the log": %APPDATA%\Viti\logs\viti.log,
+// started afresh when it grows past 1 MB
+const logFile = path.join(app.getPath('userData'), 'logs', 'viti.log');
+try {
+  fs.mkdirSync(path.dirname(logFile), { recursive: true });
+  if (fs.existsSync(logFile) && fs.statSync(logFile).size > 1024 * 1024) fs.renameSync(logFile, logFile + '.old');
+} catch {}
+for (const level of ['log', 'warn', 'error']) {
+  const was = console[level].bind(console);
+  console[level] = (...a) => {
+    was(...a);
+    try {
+      fs.appendFileSync(logFile, `${new Date().toISOString()} ${level.toUpperCase()} ${a.map((x) => (x instanceof Error ? x.stack : typeof x === 'string' ? x : JSON.stringify(x))).join(' ')}\n`);
+    } catch {}
+  };
+}
+process.on('uncaughtException', (e) => console.error('uncaught:', e));
+process.on('unhandledRejection', (e) => console.error('unhandled:', e));
+console.log(`Viti ${app.getVersion()} starting`);
+
 async function start() {
   const dataDir = app.getPath('userData');
+  const about = { version: app.getVersion(), logFile, openPath: (p) => shell.openPath(p) };
   try {
-    srv = await startServer({ root, dataDir, seal, unseal, port: PORT });
+    srv = await startServer({ root, dataDir, seal, unseal, port: PORT, ...about });
   } catch {
-    srv = await startServer({ root, dataDir, seal, unseal, port: 0 });
+    srv = await startServer({ root, dataDir, seal, unseal, port: 0, ...about });
   }
   await session.defaultSession.cookies.set({ url: srv.url, name: 'viti', value: srv.key, httpOnly: true, sameSite: 'strict' });
   Menu.setApplicationMenu(null);

@@ -8,6 +8,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { DatabaseSync } from 'node:sqlite';
 import { openProject } from '../server/host.js';
 import { GITHUB_CLIENT_ID, SCOPE } from './github-app.js';
 import * as mail from './mail.js';
@@ -20,7 +21,7 @@ const GH_API = process.env.VITI_GITHUB_API || 'https://api.github.com';
 const GH_WEB = process.env.VITI_GITHUB_WEB || 'https://github.com';
 
 // root: the app folder; dataDir: where projects and settings live; seal/unseal: keep tokens encrypted
-export async function startServer({ root, dataDir, seal, unseal, port = 0, key: givenKey }) {
+export async function startServer({ root, dataDir, seal, unseal, port = 0, key: givenKey, version = '', logFile = '', openPath = null }) {
   const PUBLIC = path.join(root, 'public');
   const UI = path.join(root, 'app', 'ui');
   const key = givenKey || crypto.randomBytes(24).toString('hex');
@@ -238,7 +239,44 @@ export async function startServer({ root, dataDir, seal, unseal, port = 0, key: 
   }
 
   // ---- the home screen's API
-  const view = (p) => ({ id: p.id, repo: p.repo, branch: p.branch, private: p.private, user: p.user, added: p.added, opened: p.opened || 0, open: current?.id === p.id, hasToken: hasToken(p.id), ownToken: !!tokens[p.id] });
+  // ---- what is going on in a project, for its card on the home screen: open to-dos and reports, new mail, and
+  // the last backup. Read straight from its database (read only), and kept until the database changes.
+  const statsCache = new Map();
+  function stats(p) {
+    const file = path.join(dataDir, 'projects', p.id, 'viti.sqlite');
+    let stamp = 0;
+    try {
+      stamp = fs.statSync(file).mtimeMs + (fs.existsSync(file + '-wal') ? fs.statSync(file + '-wal').mtimeMs : 0);
+    } catch {
+      return null; // (never opened on this computer)
+    }
+    const had = statsCache.get(p.id);
+    if (had && had.stamp === stamp) return had.v;
+    let v = null;
+    let db;
+    try {
+      db = new DatabaseSync(file, { readOnly: true });
+      const n = (sql, ...a) => db.prepare(sql).get(...a)?.c || 0;
+      const kind = "JOIN sections s ON s.id = COALESCE(b.section, 'bugs') WHERE s.kind = ?";
+      const meta = (k) => db.prepare('SELECT v FROM meta WHERE k=?').get(k)?.v || '';
+      v = {
+        todos: n(`SELECT COUNT(*) c FROM bugs b ${kind} AND b.status='open'`, 'todo'),
+        reports: n(`SELECT COUNT(*) c FROM bugs b ${kind} AND b.status='open'`, 'bugs'),
+        mail: n(`SELECT COUNT(*) c FROM bugs b ${kind} AND b.status='open' AND COALESCE(b.seen, 0)=0 AND COALESCE(b.source, '') != 'sent'`, 'mail'),
+        backedUp: Number(meta('mirror_at')) || 0,
+        backupError: meta('mirror_err') ? true : false,
+      };
+    } catch {
+      v = null;
+    } finally {
+      try {
+        db?.close();
+      } catch {}
+    }
+    statsCache.set(p.id, { stamp, v });
+    return v;
+  }
+  const view = (p) => ({ id: p.id, repo: p.repo, branch: p.branch, private: p.private, user: p.user, added: p.added, opened: p.opened || 0, open: current?.id === p.id, hasToken: hasToken(p.id), ownToken: !!tokens[p.id], stats: stats(p) });
 
   // ---- signing in with GitHub (the device flow): Viti shows a code, you enter it on github.com, and Viti
   // asks GitHub every few seconds whether you have; then it has a token for your account (kept encrypted)
@@ -410,9 +448,18 @@ export async function startServer({ root, dataDir, seal, unseal, port = 0, key: 
         return send(502, { ok: false, error: e.message });
       }
     }
+    // ---- About: the version, where your data is, and the log
+    if (p === '/app/about' && req.method === 'GET') return send(200, { ok: true, version, dataDir, logFile, canOpen: !!openPath, repo: 'ionodev/viti' });
+    if (p === '/app/reveal' && req.method === 'POST') {
+      const what = body.what === 'log' ? logFile : body.what === 'data' ? dataDir : '';
+      if (!what || !openPath) return send(400, { ok: false, error: 'That cannot be opened here.' });
+      const err = await openPath(what);
+      return err ? send(500, { ok: false, error: err }) : send(200, { ok: true });
+    }
     if (p === '/app/prefs' && req.method === 'PUT') {
       if (['system', 'light', 'dark'].includes(body.theme)) cfg.prefs.theme = body.theme;
       if (/^#[0-9a-f]{6}$/i.test(body.accent || '')) cfg.prefs.accent = body.accent.toLowerCase();
+      if (body.welcomed === true) cfg.prefs.welcomed = true;
       saveCfg();
       return send(200, { ok: true, prefs: cfg.prefs });
     }

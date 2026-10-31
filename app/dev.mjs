@@ -10,7 +10,7 @@ import { startServer } from './server.js';
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dataDir = process.argv[2] || path.join(os.tmpdir(), 'viti-dev');
 const key = 'dev';
-const s = await startServer({ root, dataDir, seal: (t) => 'v0:' + Buffer.from(t).toString('base64'), unseal: (t) => Buffer.from(t.slice(3), 'base64').toString(), port: 8796, key });
+const s = await startServer({ root, dataDir, seal: (t) => 'v0:' + Buffer.from(t).toString('base64'), unseal: (t) => Buffer.from(t.slice(3), 'base64').toString(), port: 8796, key, version: JSON.parse((await import('node:fs')).readFileSync(path.join(root, 'package.json'), 'utf8')).version + ' (dev)' });
 // in front: /dev-login gives the browser the key, everything else goes to the app
 http
   .createServer((req, res) => {

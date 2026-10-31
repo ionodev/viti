@@ -5,6 +5,7 @@ import { api, Live, loadBranches, uploadPdf } from './api.js';
 import { sectionLabel } from './state.js';
 import { h, $, avatar, toast, menu, modal, promptBox, confirmBox, ago, typing } from './ui.js';
 import { openSearch, openShortcuts } from './search.js';
+import { firstTips } from './tips.js';
 import { Board, snippet, kindLabel } from './board.js';
 import { Bugs } from './bugs.js';
 import { Todo } from './todo.js';
@@ -50,6 +51,7 @@ async function boot() {
   if (localStorage.getItem('hub.side') === 'off') document.body.classList.add('noside');
   route();
   if (!S.me.named) welcome();
+  else firstTips();
 }
 
 // the first time someone opens the hub: who are you?
