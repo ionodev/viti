@@ -16,10 +16,14 @@ http
   .createServer((req, res) => {
     if (req.url === '/dev-login') return res.writeHead(302, { 'set-cookie': `viti=${key}; Path=/; HttpOnly; SameSite=Strict`, location: '/home' }), res.end();
     const p = http.request({ host: '127.0.0.1', port: 8796, path: req.url, method: req.method, headers: { ...req.headers, host: '127.0.0.1:8795' } }, (r) => (res.writeHead(r.statusCode, r.headers), r.pipe(res)));
+    p.on('error', () => (res.headersSent ? res.destroy() : (res.writeHead(502), res.end())));
     req.pipe(p);
   })
   .on('upgrade', (req, socket, head) => {
     const p = http.request({ host: '127.0.0.1', port: 8796, path: req.url, method: req.method, headers: { ...req.headers, host: '127.0.0.1:8795' } });
+    // (the app refuses a live connection while no project is open: just close this end too)
+    p.on('error', () => socket.destroy());
+    socket.on('error', () => p.destroy());
     p.on('upgrade', (r, s2, h2) => {
       socket.write(`HTTP/1.1 101 Switching Protocols\r\n${Object.entries(r.headers).map(([k, v]) => `${k}: ${v}`).join('\r\n')}\r\n\r\n`);
       s2.write(head);

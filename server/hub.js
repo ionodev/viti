@@ -98,6 +98,8 @@ export class Hub extends DurableObject {
       } catch {}
     }
     this.ensureMail();
+    // report lists belong in REPORTS (they could once be dragged into a category of your own)
+    this.run("UPDATE sections SET category='' WHERE kind='bugs' AND COALESCE(category, '') != ''");
     if (this.getMeta('seeded')) {
       // the Status section was dropped
       if (!this.getMeta('layout6')) {
@@ -869,7 +871,8 @@ export class Hub extends DurableObject {
         const id = this.uniqueSectionId(name);
         const kind = b.kind === 'bugs' ? 'bugs' : 'board'; // a report section has Open, Closed and Trash lists
         const pos = (this.one('SELECT COALESCE(MAX(pos), ?) + 1 AS n FROM sections WHERE kind=?', kind === 'bugs' ? 999 : -1, kind).n) || 0;
-        const category = this.one('SELECT id FROM categories WHERE id=? AND COALESCE(core, 0)=0', String(b.category || ''))?.id || ''; // (a section can be created straight into one of your own categories)
+        // (a board can be created straight into one of your own categories; report lists are always in REPORTS)
+        const category = kind === 'board' ? this.one('SELECT id FROM categories WHERE id=? AND COALESCE(core, 0)=0', String(b.category || ''))?.id || '' : '';
         this.run('INSERT INTO sections (id, name, kind, pos, created, category) VALUES (?, ?, ?, ?, ?, ?)', id, name, kind, pos, Date.now(), category);
         for (const u of this.q('SELECT email FROM users')) this.run('INSERT OR IGNORE INTO reads (email, section, last_id) VALUES (?, ?, 0)', u.email, id);
         this.markDirty('meta', kind === 'board' ? 'board:' + id : 'bugs-index');
@@ -921,6 +924,7 @@ export class Hub extends DurableObject {
         if (sec.kind === 'mail') return fail(400, 'protected', 'The mailboxes stay in MAIL.');
         if (['todo', 'progress', 'calendar', 'overview'].includes(sec.kind)) return fail(400, 'protected', 'This section stays in PROJECT.');
         if (sec.parent) return fail(400, 'protected', 'A branch subsection stays under its main board.');
+        if (sec.kind === 'bugs' && b.category) return fail(400, 'protected', 'Report lists stay in REPORTS.');
         const cat = b.category ? this.one('SELECT id FROM categories WHERE id=? AND COALESCE(core, 0)=0', String(b.category)) : null;
         if (b.category && !cat) return fail(404, 'no-category');
         this.run('UPDATE sections SET category=? WHERE id=?', cat?.id || '', sec.id);

@@ -413,7 +413,7 @@ function sectionMenu(x, y, s) {
 }
 // The menu is a few groups: Sections, Reports, and any categories people made. Each person drags entries into their
 // own order; dragging into another group moves the section there (for everyone). Sections and Reports only take the
-// kind of section they are for; a custom category takes anything.
+// kind of section they are for; a custom category takes boards (report lists stay in Reports).
 const isReport = (s) => s.kind === 'bugs';
 // the sections that belong to the PROJECT category (the whole project at a glance, not content)
 const isProject = (s) => ['todo', 'progress', 'calendar', 'overview'].includes(s.kind);
@@ -498,17 +498,16 @@ function categoryMenu(x, y, c) {
     } },
   ]);
 }
-// a new section in one of your categories: a board, or a list of reports
+// a new board in one of your categories (report lists are made under Reports)
 async function newSectionIn(c) {
   const input = h('input', { type: 'text', maxlength: '60', placeholder: 'Name' });
-  const kind = h('select', {}, h('option', { value: 'board' }, 'Board (notes, text, images)'), h('option', { value: 'bugs' }, 'Reports (Open, Closed, Trash)'));
   input.addEventListener('keydown', (e) => e.key === 'Enter' && document.querySelector('.overlay .btn:not(.ghost)')?.click());
-  const body = h('div', {}, h('label', {}, 'Name'), input, h('label', { style: { marginTop: '12px' } }, 'Kind'), kind);
+  const body = h('div', {}, h('label', {}, 'Name'), input);
   if ((await modal(`New section in ${c.name}`, body, [{ label: 'Cancel', value: false }, { label: 'Create', value: true, primary: true }])) !== true) return;
   const name = input.value.trim();
   if (!name) return;
   try {
-    const r = await api('POST', '/api/sections', { name, kind: kind.value, category: c.id });
+    const r = await api('POST', '/api/sections', { name, kind: 'board', category: c.id });
     go(r.id);
   } catch (e) {
     toast(e.message, true);
@@ -532,7 +531,7 @@ function drawSidebar() {
         nav,
         c.core ? null : h('div', { class: 'side-tools' }, h('button', { class: 'link', onclick: () => newSectionIn(c) }, '+ New section'))),
     );
-    groups.push({ nav, category: c.id, accept: c.id === 'project' ? isProject : c.core ? (s) => s.kind === 'mail' : (s) => s.kind !== 'mail' && !isProject(s), list: S.sections.filter((s) => s.category === c.id && !s.parent) });
+    groups.push({ nav, category: c.id, accept: c.id === 'project' ? isProject : c.core ? (s) => s.kind === 'mail' : (s) => s.kind !== 'mail' && !isProject(s) && !isReport(s), list: S.sections.filter((s) => s.category === c.id && !s.parent) });
   }
   for (const g of groups) {
     g.list = ordered(g.list);
