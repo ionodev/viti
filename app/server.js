@@ -144,10 +144,9 @@ export async function startServer({ root, dataDir, seal, unseal, port = 0, key: 
     };
   }
 
-  // ---- where a repository's Viti backup is: the desktop app's own place (viti-data, folder viti), or the web
-  // Viti's (hub-data, folder hub: the team hub in vardengames_dev). A viti.json beside it can say where the
-  // branch tags come from (another repository: the web hub takes them from the game's). None yet: the
-  // desktop's place, and the repository's own branches.
+  // ---- where a repository's Viti backup is: its usual place (branch viti-data, folder viti), or where an older
+  // Viti kept it (branch hub-data, folder hub). A viti.json beside it can say where the branch tags come from
+  // (another repository). None yet: the usual place, and the repository's own branches.
   const PLACES = [[DATA_BRANCH, 'viti'], ['hub-data', 'hub']];
   // (both there: the one with more in it; an empty one can be left by Viti 0.1.0, which only knew its own place)
   async function findBackup(repo, token) {
@@ -184,7 +183,7 @@ export async function startServer({ root, dataDir, seal, unseal, port = 0, key: 
     const dir = path.join(dataDir, 'projects', id);
     const token = tokenOf(id);
     // a project connected by Viti 0.1.0 (which only looked for its own backup place): look again. If the
-    // backup is elsewhere (the web Viti's hub-data, say), the copy here was started empty: it is set aside
+    // backup is elsewhere (the older layout, say), the copy here was started empty: it is set aside
     // (kept, renamed) and the project is fetched from the real backup.
     if (!p.dir && token) {
       try {
@@ -199,7 +198,7 @@ export async function startServer({ root, dataDir, seal, unseal, port = 0, key: 
     fs.mkdirSync(dir, { recursive: true });
     const dbFile = path.join(dir, 'viti.sqlite');
     const fresh = !fs.existsSync(dbFile);
-    const env = { GITHUB_API: GH_API, KOLVER_API: GH_API, GITHUB_REPO: p.repo, GITHUB_TOKEN: token, GITHUB_BRANCH: p.branch || DATA_BRANCH, GITHUB_DIR: p.dir || 'viti', KOLVER_REPO: p.branchesFrom || p.repo, KOLVER_TOKEN: token, MIRROR_DELAY_MS: '60000' };
+    const env = { GITHUB_API: GH_API, BRANCHES_API: GH_API, GITHUB_REPO: p.repo, GITHUB_TOKEN: token, GITHUB_BRANCH: p.branch || DATA_BRANCH, GITHUB_DIR: p.dir || 'viti', BRANCHES_REPO: p.branchesFrom || p.repo, BRANCHES_TOKEN: token, MIRROR_DELAY_MS: '60000' };
     // (who you are in this project: your GitHub sign-in, unless the backup already knows you by another address)
     const who = { ...(p.user || {}), ...(p.as ? { email: p.as } : {}) };
     const host = await openProject({ dbFile, env, user: who });

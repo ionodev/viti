@@ -25,11 +25,11 @@
     "electron@38.8.6": true,
     "electron-winstaller@5.4.0": true
   },
-  "author": "Varden Games",
+  "author": "ionodev",
   "build": {
-    "appId": "com.vardengames.viti",
+    "appId": "io.github.ionodev.viti",
     "productName": "Viti",
-    "copyright": "\u00a9 2026 Varden Games",
+    "copyright": "© 2026 ionodev",
     "directories": {
       "output": "dist",
       "buildResources": "build"

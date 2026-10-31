@@ -6,7 +6,7 @@ export class GitHub {
   constructor(env) {
     this.api = (env.GITHUB_API || 'https://api.github.com').replace(/\/$/, '');
     this.repo = env.GITHUB_REPO;
-    this.branch = env.GITHUB_BRANCH || 'hub-data';
+    this.branch = env.GITHUB_BRANCH || 'viti-data';
     this.token = env.GITHUB_TOKEN;
   }
   get configured() {
@@ -15,7 +15,7 @@ export class GitHub {
   async call(method, path, body, ok404 = false) {
     const res = await fetch(`${this.api}/repos/${this.repo}${path}`, {
       method,
-      headers: { authorization: `Bearer ${this.token}`, accept: 'application/vnd.github+json', 'x-github-api-version': '2022-11-28', 'user-agent': 'varden-hub', ...(body ? { 'content-type': 'application/json' } : {}) },
+      headers: { authorization: `Bearer ${this.token}`, accept: 'application/vnd.github+json', 'x-github-api-version': '2022-11-28', 'user-agent': 'viti', ...(body ? { 'content-type': 'application/json' } : {}) },
       body: body ? JSON.stringify(body) : undefined,
     });
     if (res.status === 404 && ok404) return null;
@@ -49,7 +49,7 @@ export class GitHub {
 
   // every file of the branch under `dir`, as { relativePath: Uint8Array }
   async files(dir) {
-    const res = await fetch(`${this.api}/repos/${this.repo}/tarball/${this.branch}`, { headers: { authorization: `Bearer ${this.token}`, accept: 'application/vnd.github+json', 'user-agent': 'varden-hub' }, redirect: 'follow' });
+    const res = await fetch(`${this.api}/repos/${this.repo}/tarball/${this.branch}`, { headers: { authorization: `Bearer ${this.token}`, accept: 'application/vnd.github+json', 'user-agent': 'viti' }, redirect: 'follow' });
     if (res.status === 404) return null;
     if (!res.ok) throw new Error(`GitHub tarball → ${res.status}`);
     const raw = new Uint8Array(await new Response(res.body.pipeThrough(new DecompressionStream('gzip'))).arrayBuffer());
@@ -91,19 +91,19 @@ export function untar(buf, dir) {
   return out;
 }
 
-// The branches of the game's repository (env.KOLVER_REPO), most recently committed first, in one GraphQL call (a few
-// more if there are over 100). It uses its own read-only token (KOLVER_TOKEN) that can see only that repo.
-export async function kolverBranches(env) {
-  const [owner, name] = String(env.KOLVER_REPO || '').split('/');
-  if (!env.KOLVER_TOKEN || !owner || !name) return null;
-  const api = (env.KOLVER_API || 'https://api.github.com').replace(/\/$/, '');
+// The branches of the project's repository (env.BRANCHES_REPO), most recently committed first, in one GraphQL call
+// (a few more if there are over 100), with the token BRANCHES_TOKEN.
+export async function repoBranches(env) {
+  const [owner, name] = String(env.BRANCHES_REPO || '').split('/');
+  if (!env.BRANCHES_TOKEN || !owner || !name) return null;
+  const api = (env.BRANCHES_API || 'https://api.github.com').replace(/\/$/, '');
   const query = 'query($o:String!,$n:String!,$c:String){repository(owner:$o,name:$n){defaultBranchRef{name} refs(refPrefix:"refs/heads/",first:100,after:$c){pageInfo{hasNextPage endCursor} nodes{name target{... on Commit{committedDate}}}}}}';
   const branches = [];
   let def = '';
   let cursor = null;
   for (let page = 0; page < 5; page++) {
-    const res = await fetch(`${api}/graphql`, { method: 'POST', headers: { authorization: `Bearer ${env.KOLVER_TOKEN}`, 'content-type': 'application/json', 'user-agent': 'varden-hub' }, body: JSON.stringify({ query, variables: { o: owner, n: name, c: cursor } }) });
-    if (!res.ok) throw new Error(`GitHub graphql → ${res.status}${res.status === 401 || res.status === 403 ? ' (check the KOLVER_TOKEN)' : ''}`);
+    const res = await fetch(`${api}/graphql`, { method: 'POST', headers: { authorization: `Bearer ${env.BRANCHES_TOKEN}`, 'content-type': 'application/json', 'user-agent': 'viti' }, body: JSON.stringify({ query, variables: { o: owner, n: name, c: cursor } }) });
+    if (!res.ok) throw new Error(`GitHub graphql → ${res.status}${res.status === 401 || res.status === 403 ? ' (check the GitHub sign-in)' : ''}`);
     const j = await res.json();
     const repo = j.data?.repository;
     if (!repo) throw new Error(j.errors?.[0]?.message || 'The repository could not be read (is the token allowed to see it?)');

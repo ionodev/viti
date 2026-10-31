@@ -12,7 +12,7 @@ import { DurableObject, WebSocketRequestResponsePair } from './do-shim.js';
 import { json, fail, rid, sha256hex, safeEqual, clip, num, slugify, b64decode, sniffImage, sniffPdf, colorFor, nextColor } from './util.js';
 import { parseUA } from './ua.js';
 import { Mirror } from './mirror.js';
-import { kolverBranches } from './github.js';
+import { repoBranches } from './github.js';
 
 export const LIMITS = { name: 60, msg: 8000, itemText: 20000, bug: 10000, image: 10 * 1024 * 1024, sections: 150, categories: 30, items: 3000, chunk: 1000000 };
 const NOTE_COLORS = ['yellow', 'white', 'red', 'orange', 'green', 'blue', 'purple'];
@@ -627,15 +627,15 @@ export class Hub extends DurableObject {
     return this.msgOut(this.one('SELECT * FROM messages WHERE id=?', id));
   }
 
-  // ------------------------------------------------------------------ the game's branches (for the branch tags)
-  // 'viti' is the tag for to-dos about Viti itself: not a branch of the game, so it is never in the branch lists, and only
+  // ------------------------------------------------------------------ the repository's branches (for the branch tags)
+  // 'viti' is the tag for to-dos about Viti itself: not a branch of the repository, so it is never in the branch lists, and only
   // to-do rows can carry it
   cleanBranch(b) {
     const s = String(b ?? '').trim();
     return /^[\w.\-/]{1,100}$/.test(s) ? s : '';
   }
   // { list: [names, the most recently committed first], latest, source }: from GitHub (kept for 10 minutes), else the
-  // KOLVER_BRANCHES setting (names separated by commas, the first being the latest), else nothing
+  // BRANCHES setting (names separated by commas, the first being the latest), else nothing
   async branches() {
     let c = null;
     try {
@@ -643,7 +643,7 @@ export class Hub extends DurableObject {
     } catch {}
     if (!c || Date.now() - c.at > 10 * 60 * 1000) {
       try {
-        const g = await kolverBranches(this.env);
+        const g = await repoBranches(this.env);
         if (g) {
           const names = g.branches.map((b) => b.name).filter((n) => n.toLowerCase() !== 'viti');
           // the latest is the most recently committed branch, not counting the main one (that one always has the newest commits)
@@ -658,11 +658,11 @@ export class Hub extends DurableObject {
       }
     }
     if (!c || (!c.list.length && !c.error)) {
-      const fixed = String(this.env.KOLVER_BRANCHES || '').split(',').map((x) => this.cleanBranch(x)).filter((x) => x && x.toLowerCase() !== 'viti');
+      const fixed = String(this.env.BRANCHES || '').split(',').map((x) => this.cleanBranch(x)).filter((x) => x && x.toLowerCase() !== 'viti');
       return { list: fixed, latest: fixed[0] || '', source: fixed.length ? 'setting' : 'none', error: '' };
     }
     if (!c.list.length) {
-      const fixed = String(this.env.KOLVER_BRANCHES || '').split(',').map((x) => this.cleanBranch(x)).filter((x) => x && x.toLowerCase() !== 'viti');
+      const fixed = String(this.env.BRANCHES || '').split(',').map((x) => this.cleanBranch(x)).filter((x) => x && x.toLowerCase() !== 'viti');
       if (fixed.length) return { list: fixed, latest: fixed[0], source: 'setting', error: c.error };
     }
     return { list: c.list, latest: c.latest, source: c.source, error: c.error || '' };
@@ -897,7 +897,7 @@ export class Hub extends DurableObject {
             if (this.one('SELECT id FROM images WHERE id=? AND mime=?', file, 'application/pdf') === undefined) return fail(400, 'file', 'Upload the PDF first.');
           }
           const obr = this.cleanBranch(b.branch);
-          if (obr.toLowerCase() === 'viti') return fail(400, 'branch', 'viti is not a branch of the game.');
+          if (obr.toLowerCase() === 'viti') return fail(400, 'branch', 'viti is not a branch of the repository.');
           if (obr && !this.one("SELECT id FROM sections WHERE parent=? AND branch=? AND kind='board'", par.id, obr)) return fail(400, 'branch', 'Make the page for that branch under this section first (+ Branch).');
           const sid = this.uniqueSectionId(par.id + '-' + name);
           const pos = (this.one('SELECT COALESCE(MAX(pos), 0) + 1 AS n FROM sections WHERE parent=?', par.id).n) || 1;
@@ -907,13 +907,13 @@ export class Hub extends DurableObject {
           this.bcSections();
           return json({ ok: true, id: sid });
         }
-        // a branch subsection: a board of its own under a main board, one per branch of the game
+        // a branch subsection: a board of its own under a main board, one per branch of the repository
         if (b.parent) {
           const par = this.section(String(b.parent));
           const br = this.cleanBranch(b.branch);
           if (!par || par.kind !== 'board' || par.parent) return fail(400, 'parent', 'Only a main board can have branch subsections.');
           if (!br) return fail(400, 'branch', 'Pick a branch.');
-          if (br.toLowerCase() === 'viti') return fail(400, 'branch', 'viti is not a branch of the game.');
+          if (br.toLowerCase() === 'viti') return fail(400, 'branch', 'viti is not a branch of the repository.');
           if (this.one("SELECT id FROM sections WHERE parent=? AND branch=? AND kind='board'", par.id, br)) return fail(409, 'exists', 'That branch already has a subsection here.');
           const sid = this.uniqueSectionId(par.id + '-' + br);
           this.run("INSERT INTO sections (id, name, kind, pos, created, category, parent, branch) VALUES (?, ?, 'board', 0, ?, '', ?, ?)", sid, br, Date.now(), par.id, br);

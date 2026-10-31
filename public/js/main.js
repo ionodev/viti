@@ -103,7 +103,8 @@ function chrome() {
       $('#project-btn .pi').textContent = name.charAt(0).toUpperCase();
       $('#project-btn b').textContent = name;
       $('#project-btn small').textContent = owner;
-      document.title = `${name} · Viti`;
+      S.projectName = name;
+      if (!/^\(/.test(document.title)) document.title = `${name} · Viti`;
     })
     .catch(() => {});
   $('#project-btn').addEventListener('click', () => (location.href = '/home'));
@@ -148,7 +149,7 @@ function chrome() {
     }
   });
   $('#sync').addEventListener('click', async () => {
-    if (!S.sync?.configured) return toast('This project has no GitHub token, so it is not backed up. Add one on the home screen (the project’s ⋯ menu).');
+    if (!S.sync?.configured) return toast('This project is not backed up: sign in with GitHub on the home screen (or give the project a token in its ⋯ menu there).');
     try {
       toast('Backing up to GitHub…');
       const r = await api('POST', '/api/admin/sync', {});
@@ -539,14 +540,16 @@ function drawSidebar() {
   $('#me').replaceChildren(avatar(S.me), S.me.name);
   drawSync();
   const unread = S.sections.reduce((n, s) => n + (s.unread || 0), 0);
-  document.title = unread && settings().titleCount ? `(${unread}) Viti` : 'Viti';
+  // (the window's title: the project, and how many new messages)
+  const name = S.projectName ? `${S.projectName} · Viti` : 'Viti';
+  document.title = unread && settings().titleCount ? `(${unread}) ${name}` : name;
 }
 function drawSync() {
   const el = $('#sync');
   const s = S.sync || {};
   el.className = 'sync ' + (!s.configured ? 'off' : s.ok === false ? 'bad' : 'ok');
-  el.textContent = !s.configured ? 'GitHub backup: off' : s.ok === false ? 'Backup failed: click to retry' : s.at ? `Backed up ${ago(s.at)}${s.pending ? ' · more waiting' : ''}` : 'Backup: waiting for the first run';
-  el.title = s.error || 'Everything is kept on GitHub too (the hub-data branch). Click to back up now.';
+  el.textContent = !s.configured ? 'Not backed up' : s.ok === false ? 'Backup failed: click to retry' : s.at ? `Backed up ${ago(s.at)}${s.pending ? ' · more waiting' : ''}` : 'Backup: waiting for the first run';
+  el.title = !s.configured ? 'Sign in with GitHub on the home screen to back this project up.' : s.error || 'Everything is also kept in the repository on GitHub (in a branch of its own). Click to back up now.';
 }
 function drawTitle() {
   const sec = sectionById(S.section);

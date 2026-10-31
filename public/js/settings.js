@@ -1,7 +1,6 @@
 // Personal settings, kept in this browser (so each device has its own), and the little sounds and pop-ups they control.
 import { appearanceControls } from './appearance.js';
 import { h, modal, toast } from './ui.js';
-import { pickAndImport } from './import.js';
 
 const KEY = 'hub.settings';
 export const DEFAULTS = {
@@ -157,9 +156,6 @@ export async function openSettings() {
       return h('div', { class: 'setvol' }, h('span', {}, 'Count from'), sel);
     })(),
     h('p', { class: 'hint' }, 'These settings are kept on this computer.'),
-    h('p', { class: 'label' }, 'Import'),
-    h('p', { class: 'hint' }, 'Add a bundle of boards, reports and to-dos from a file (made from the Figma notes). Each bundle can only be imported once.'),
-    h('button', { class: 'btn small ghost', onclick: () => pickAndImport() }, 'Import a bundle…'),
   );
   await modal('Settings', body, [{ label: 'Done', value: true, primary: true }]);
 }

@@ -781,7 +781,7 @@ export class Board {
     const items = [...this.sel].map((id) => this.items.get(id)).filter(Boolean).sort((a, b) => a.z - b.z);
     if (!items.length) return;
     e.preventDefault();
-    e.clipboardData.setData('application/x-varden-items', JSON.stringify({ v: 1, items: items.map((it) => this.copyOf(it)) }));
+    e.clipboardData.setData('application/x-viti-items', JSON.stringify({ v: 1, items: items.map((it) => this.copyOf(it)) }));
     e.clipboardData.setData('text/plain', items.map((it) => (it.type === 'image' ? it.data.name || 'image' : it.data.text || '')).join('\n\n'));
     if (cut) this.deleteSelected();
     else toast(items.length === 1 ? 'Copied.' : `Copied ${items.length} items.`);
@@ -819,7 +819,7 @@ export class Board {
   }
   onPaste(e) {
     if (typing() || !this.vp.isConnected || document.querySelector('.overlay')) return;
-    const mine = e.clipboardData?.getData('application/x-varden-items');
+    const mine = e.clipboardData?.getData('application/x-viti-items');
     if (mine && this.pasteItems(mine)) return e.preventDefault();
     const files = [...(e.clipboardData?.files || [])].filter((f) => f.type.startsWith('image/'));
     if (files.length) {

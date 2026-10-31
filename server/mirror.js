@@ -1,6 +1,6 @@
 // The GitHub mirror. Everything that changes is noted in the `dirty` table; a while after the first change
-// (MIRROR_DELAY_MS) an alarm turns those notes into files and puts them in ONE commit on the `hub-data`
-// branch, under hub/ . The Durable Object stays the live copy; this is the backup and the history, and
+// (MIRROR_DELAY_MS) an alarm turns those notes into files and puts them in ONE commit on the backup
+// branch, in its folder. The Durable Object stays the live copy; this is the backup and the history, and
 // restore() can rebuild everything from it.
 //
 //   hub/meta.json                       sections and people
