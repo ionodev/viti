@@ -686,6 +686,17 @@ export class Hub extends DurableObject {
     return this.one('SELECT * FROM bugs WHERE id=?', id);
   }
 
+  // an email read from a linked folder (app/mail.js) into a mailbox; each one comes in once (its Message-ID
+  // is kept in "page"). -> true if it was new
+  importMail(section, m) {
+    if (this.section(section)?.kind !== 'mail') return false;
+    const page = clip('mail:' + m.ref, 300);
+    if (this.one('SELECT id FROM bugs WHERE page=? AND section=?', page, section)) return false;
+    const row = this.insertBug({ name: m.name || m.email, email: m.email, ua: '', page, message: m.text || '(no text)', images: [], source: 'mail', ts: m.ts, section, subject: m.subject });
+    this.bcAll({ t: 'bug', bug: this.bugOut(row) });
+    return true;
+  }
+
   // ------------------------------------------------------------------ images (in chunks: a row holds at most 2 MB)
   async saveImage(bytes, { name = '', w = 0, h = 0 }, by, pdf = false) {
     if (!bytes.length || bytes.length > LIMITS.image) throw new Error('size');
@@ -867,13 +878,19 @@ export class Hub extends DurableObject {
           return json({ ok: true, id: sid });
         }
         const id = this.uniqueSectionId(name);
-        const kind = b.kind === 'bugs' ? 'bugs' : 'board'; // a report section has Open, Closed and Trash lists
+        const kind = b.kind === 'bugs' ? 'bugs' : b.kind === 'mail' ? 'mail' : 'board'; // a report section has Open, Closed and Trash lists; a mailbox gets email
+        // a mailbox always goes in the MAIL category (made the first time)
+        if (kind === 'mail') {
+          this.run("INSERT OR IGNORE INTO categories (id, name, pos, created, core) VALUES ('mail', 'MAIL', -1, ?, 1)", Date.now());
+          b.category = 'mail';
+        }
         const pos = (this.one('SELECT COALESCE(MAX(pos), ?) + 1 AS n FROM sections WHERE kind=?', kind === 'bugs' ? 999 : -1, kind).n) || 0;
         // (a section can be created straight into Sections, Reports, or one of your own categories)
-        const category = ['@sections', '@reports'].includes(b.category) ? b.category : this.one('SELECT id FROM categories WHERE id=? AND COALESCE(core, 0)=0', String(b.category || ''))?.id || '';
+        const category = kind === 'mail' ? 'mail' : ['@sections', '@reports'].includes(b.category) ? b.category : this.one('SELECT id FROM categories WHERE id=? AND COALESCE(core, 0)=0', String(b.category || ''))?.id || '';
         this.run('INSERT INTO sections (id, name, kind, pos, created, category) VALUES (?, ?, ?, ?, ?, ?)', id, name, kind, pos, Date.now(), category);
         for (const u of this.q('SELECT email FROM users')) this.run('INSERT OR IGNORE INTO reads (email, section, last_id) VALUES (?, ?, 0)', u.email, id);
         this.markDirty('meta', kind === 'board' ? 'board:' + id : 'bugs-index');
+        if (kind === 'mail') this.markDirty('meta');
         this.bcSections();
         return json({ ok: true, id });
       }

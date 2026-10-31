@@ -484,7 +484,7 @@ function categoryMenu(x, y, c) {
 // a new section in a group of the menu (Sections, Reports, or one of your categories): a board, or a list of reports
 async function newSectionIn(c, preferred = 'board') {
   const input = h('input', { type: 'text', maxlength: '60', placeholder: 'Name' });
-  const kind = h('select', {}, h('option', { value: 'board' }, 'Board (notes, text, images)'), h('option', { value: 'bugs' }, 'Reports (Open, Closed, Trash)'));
+  const kind = h('select', {}, h('option', { value: 'board' }, 'Board (notes, text, images)'), h('option', { value: 'bugs' }, 'Reports (Open, Closed, Trash)'), h('option', { value: 'mail' }, 'Mailbox (reads an email folder)'));
   kind.value = preferred;
   input.addEventListener('keydown', (e) => e.key === 'Enter' && document.querySelector('.overlay .btn:not(.ghost)')?.click());
   const body = h('div', {}, h('label', {}, 'Name'), input, h('label', { style: { marginTop: '12px' } }, 'Kind'), kind);
@@ -519,7 +519,7 @@ function drawSidebar() {
       h('div', { class: 'cat' },
         h('div', { class: 'cat-head' }, h('p', { class: 'label' }, c.name), c.core ? null : h('button', { class: 'dots', title: 'Rename or delete this category', onclick: (e) => categoryMenu(e.clientX, e.clientY, c) }, '\u22ef')),
         nav,
-        c.core ? null : h('div', { class: 'side-tools' }, h('button', { class: 'link', onclick: () => newSectionIn(c) }, '+ New section'))),
+        c.id === 'mail' ? h('div', { class: 'side-tools' }, h('button', { class: 'link', onclick: () => newSectionIn(c, 'mail') }, '+ New mailbox')) : c.core ? null : h('div', { class: 'side-tools' }, h('button', { class: 'link', onclick: () => newSectionIn(c) }, '+ New section'))),
     );
     groups.push({ nav, category: c.id, accept: c.id === 'project' ? isProject : c.core ? (s) => s.kind === 'mail' : (s) => s.kind !== 'mail' && !isProject(s), list: S.sections.filter((s) => s.category === c.id && !s.parent) });
   }

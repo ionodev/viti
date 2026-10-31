@@ -1,7 +1,7 @@
 {
   "name": "viti-desktop",
   "productName": "Viti",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "private": true,
   "description": "Viti: a project page for any GitHub repository (boards, chat, to-dos, reports), as a Windows app",
   "main": "app/main.js",
@@ -16,6 +16,8 @@
     "electron-builder": "^26.18.0"
   },
   "dependencies": {
+    "imapflow": "^1.7.8",
+    "mailparser": "^3.14.1",
     "ws": "^8.22.1"
   },
   "allowScripts": {
@@ -26,7 +28,7 @@
   "build": {
     "appId": "com.vardengames.viti",
     "productName": "Viti",
-    "copyright": "\u00a9 2026 Varden Games",
+    "copyright": "© 2026 Varden Games",
     "directories": {
       "output": "dist",
       "buildResources": "build"

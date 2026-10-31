@@ -10,6 +10,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { openProject } from '../server/host.js';
 import { GITHUB_CLIENT_ID, SCOPE } from './github-app.js';
+import * as mail from './mail.js';
 
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf', '.webp': 'image/webp' };
 const CSP = "default-src 'self'; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' ws: wss:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'";
@@ -49,6 +50,63 @@ export async function startServer({ root, dataDir, seal, unseal, port = 0, key: 
   const hasToken = (id) => !!(tokens[id] || tokens[ACCOUNT]);
 
   let current = null; // { id, host }
+
+  // ---- mail: the email accounts you connected (yours, on this computer: they are never in a repository), and
+  // which folder each mailbox of a project reads. Credentials are kept encrypted, like the GitHub sign-in.
+  cfg.mail ||= { accounts: [], links: {} };
+  const credOf = (accId) => {
+    try {
+      return tokens['mail:' + accId] ? JSON.parse(unseal(tokens['mail:' + accId])) : null;
+    } catch {
+      return null;
+    }
+  };
+  const keepCred = (accId) => (cred) => {
+    tokens['mail:' + accId] = seal(JSON.stringify(cred));
+    save(tokFile, tokens);
+  };
+  let fetching = false;
+  // read the new mail of every linked mailbox in the open project (or of one) -> { [section]: { added, error } }
+  async function fetchMail(only) {
+    if (!current || fetching) return {};
+    fetching = true;
+    const proj = cfg.projects.find((x) => x.id === current.id);
+    const links = cfg.mail.links[current.id] || {};
+    const out = {};
+    try {
+      for (const [section, link] of Object.entries(links)) {
+        if (only && section !== only) continue;
+        const acc = cfg.mail.accounts.find((a) => a.id === link.account);
+        const cred = acc && credOf(acc.id);
+        if (!acc || !cred) {
+          out[section] = { added: 0, error: 'The email account of this mailbox is not connected any more.' };
+          continue;
+        }
+        if (!proj?.private) {
+          out[section] = { added: 0, error: 'This repository is public: Viti does not put email in it.' };
+          continue;
+        }
+        try {
+          const r = await mail.fetchNew(acc, cred, link.folder, link.state, keepCred(acc.id));
+          let added = 0;
+          for (const m of r.messages) if (current?.host.hub.importMail(section, m)) added++;
+          Object.assign(link, { state: r.state, fetched: Date.now(), error: '' });
+          out[section] = { added };
+        } catch (e) {
+          link.error = e.message;
+          out[section] = { added: 0, error: e.message };
+        }
+      }
+      saveCfg();
+    } finally {
+      fetching = false;
+    }
+    return out;
+  }
+  // every two minutes while a project is open
+  const mailTimer = setInterval(() => fetchMail().catch((e) => console.error('mail:', e.message)), 2 * 60 * 1000);
+  mailTimer.unref?.();
+  let msDevice = null; // a "Sign in with Microsoft" under way
 
   // ---- GitHub: is this a repository the token can write to, and who is the token's owner
   async function gh(token, p) {
@@ -219,6 +277,7 @@ export async function startServer({ root, dataDir, seal, unseal, port = 0, key: 
     const send = (status, body) => (res.writeHead(status, { 'content-type': 'application/json', 'cache-control': 'no-store' }), res.end(JSON.stringify(body)));
     const body = req.method === 'GET' ? {} : await readJson(req);
     const p = url.pathname;
+    let m0;
     if (p === '/app/state' && req.method === 'GET') return send(200, { ok: true, prefs: cfg.prefs, account: tokens[ACCOUNT] ? cfg.account || null : null, canSignIn: !!GITHUB_CLIENT_ID, projects: cfg.projects.map(view).sort((a, b) => b.opened - a.opened || b.added - a.added), current: current?.id || null });
     if (p === '/app/signin/start' && req.method === 'POST') {
       if (!GITHUB_CLIENT_ID) return send(400, { ok: false, error: 'Signing in with GitHub is not set up in this build of Viti yet. Use a token for now.' });
@@ -251,6 +310,95 @@ export async function startServer({ root, dataDir, seal, unseal, port = 0, key: 
       saveCfg();
       repoCache = null;
       return send(200, { ok: true });
+    }
+    // ---- mail (for the open project's mailboxes)
+    if (p === '/app/mail' && req.method === 'GET') {
+      const proj = current && cfg.projects.find((x) => x.id === current.id);
+      return send(200, { ok: true, accounts: cfg.mail.accounts, links: (current && cfg.mail.links[current.id]) || {}, outlook: mail.outlookReady(), private: !!proj?.private });
+    }
+    if (p === '/app/mail/gmail' && req.method === 'POST') {
+      const address = String(body.address || '').trim().toLowerCase();
+      const password = String(body.password || '').replace(/\s+/g, '');
+      if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(address)) return send(400, { ok: false, error: 'Write the whole email address.' });
+      if (password.length < 8) return send(400, { ok: false, error: 'Paste the app password (16 letters).' });
+      try {
+        await mail.gmailFolders({ address, password }); // (it works, or says why not)
+      } catch (e) {
+        return send(400, { ok: false, error: e.message });
+      }
+      let acc = cfg.mail.accounts.find((a) => a.provider === 'gmail' && a.address === address);
+      if (!acc) cfg.mail.accounts.push((acc = { id: crypto.randomBytes(5).toString('hex'), provider: 'gmail', address }));
+      keepCred(acc.id)({ address, password });
+      saveCfg();
+      return send(200, { ok: true, account: acc });
+    }
+    if (p === '/app/mail/outlook/start' && req.method === 'POST') {
+      if (!mail.outlookReady()) return send(400, { ok: false, error: 'Outlook is not set up in this build of Viti yet.' });
+      try {
+        const r = await mail.outlookStart();
+        msDevice = { code: r.device_code, until: Date.now() + (r.expires_in || 900) * 1000, interval: r.interval || 5 };
+        return send(200, { ok: true, userCode: r.user_code, url: r.verification_uri || 'https://microsoft.com/devicelogin', interval: msDevice.interval });
+      } catch (e) {
+        return send(502, { ok: false, error: e.message });
+      }
+    }
+    if (p === '/app/mail/outlook/poll' && req.method === 'POST') {
+      if (!msDevice || Date.now() > msDevice.until) return send(200, { ok: true, status: 'expired' });
+      const r = await mail.outlookPoll(msDevice.code).catch((e) => ({ status: 'failed', error: e.message }));
+      if (r.status === 'pending') {
+        if (r.slow) msDevice.interval += 5;
+        return send(200, { ok: true, status: 'pending', interval: msDevice.interval });
+      }
+      msDevice = null;
+      if (r.status !== 'done') return send(200, { ok: true, ...r });
+      const address = String(r.address || '').toLowerCase();
+      let acc = cfg.mail.accounts.find((a) => a.provider === 'outlook' && a.address === address);
+      if (!acc) cfg.mail.accounts.push((acc = { id: crypto.randomBytes(5).toString('hex'), provider: 'outlook', address }));
+      keepCred(acc.id)({ refresh: r.refresh });
+      saveCfg();
+      return send(200, { ok: true, status: 'done', account: acc });
+    }
+    if ((m0 = p.match(/^\/app\/mail\/accounts\/([a-f0-9]+)(\/folders)?$/))) {
+      const acc = cfg.mail.accounts.find((a) => a.id === m0[1]);
+      if (!acc) return send(404, { ok: false, error: 'That account is not connected.' });
+      if (m0[2] && req.method === 'GET') {
+        try {
+          return send(200, { ok: true, folders: await mail.folders(acc, credOf(acc.id), keepCred(acc.id)) });
+        } catch (e) {
+          return send(502, { ok: false, error: e.message });
+        }
+      }
+      if (!m0[2] && req.method === 'DELETE') {
+        // forgotten here, and unlinked from every mailbox (the mail already in Viti stays)
+        cfg.mail.accounts = cfg.mail.accounts.filter((a) => a.id !== acc.id);
+        for (const links of Object.values(cfg.mail.links)) for (const [sec, l] of Object.entries(links)) if (l.account === acc.id) delete links[sec];
+        delete tokens['mail:' + acc.id];
+        save(tokFile, tokens);
+        saveCfg();
+        return send(200, { ok: true });
+      }
+    }
+    if ((m0 = p.match(/^\/app\/mail\/links\/([a-z0-9-]+)$/)) && current) {
+      const links = (cfg.mail.links[current.id] ||= {});
+      if (req.method === 'PUT') {
+        const proj = cfg.projects.find((x) => x.id === current.id);
+        if (!proj?.private) return send(400, { ok: false, error: 'This repository is public, and everything in a project is backed up to it: Viti does not put email there. Use a private repository for mail.' });
+        if (current.host.hub.section(m0[1])?.kind !== 'mail') return send(400, { ok: false, error: 'That is not a mailbox.' });
+        if (!cfg.mail.accounts.some((a) => a.id === body.account) || !body.folder) return send(400, { ok: false, error: 'Pick an account and a folder.' });
+        links[m0[1]] = { account: body.account, folder: String(body.folder), folderName: String(body.folderName || body.folder), state: {}, fetched: 0, error: '' };
+        saveCfg();
+        const r = await fetchMail(m0[1]);
+        return send(200, { ok: true, ...(r[m0[1]] || {}) });
+      }
+      if (req.method === 'DELETE') {
+        delete links[m0[1]];
+        saveCfg();
+        return send(200, { ok: true });
+      }
+    }
+    if ((m0 = p.match(/^\/app\/mail\/fetch\/([a-z0-9-]+)$/)) && req.method === 'POST' && current) {
+      const r = await fetchMail(m0[1]);
+      return send(200, { ok: true, ...(r[m0[1]] || { added: 0, error: fetching ? 'Already fetching: try again in a moment.' : '' }) });
     }
     if (p === '/app/repos' && req.method === 'GET') {
       try {
@@ -378,6 +526,7 @@ export async function startServer({ root, dataDir, seal, unseal, port = 0, key: 
     url: `http://127.0.0.1:${server.address().port}`,
     key,
     async stop() {
+      clearInterval(mailTimer);
       await close();
       server.close();
     },

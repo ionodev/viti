@@ -1,4 +1,5 @@
-// A mailbox: the mail that came in through the website's contact form, to read here. On the left the messages of
+// A mailbox: email to read here, from a folder of an email account you linked (the bar on top: mailsetup.js),
+// or (the web version) from a website's contact form. On the left the messages of
 // one folder (Inbox, Archive or Trash), newest first, unread ones in bold; on the right the one you opened.
 // It uses the same data as the report lists (so it is live and backed up in the same way).
 import { S } from './state.js';
@@ -6,6 +7,7 @@ import { api } from './api.js';
 import { h, ago, stamp, toast } from './ui.js';
 import { emit } from './state.js';
 import { Bugs } from './bugs.js';
+import { sourceBar } from './mailsetup.js';
 
 const FOLDERS = [
   { key: 'open', title: 'Inbox', empty: 'No mail here.' },
@@ -27,7 +29,8 @@ export class Mailbox extends Bugs {
     this.list_ = h('div', { class: 'mail-rows' });
     this.read = h('div', { class: 'mail-read' });
     this.top = h('div', { class: 'mail-tabs' }, FOLDERS.map((f) => (this.tabs[f.key] = h('button', { class: 'tab', onclick: () => this.setFolder(f.key) }, f.title, ' ', h('span', { class: 'n' })))));
-    this.root = h('div', { class: 'mailbox' }, h('div', { class: 'mail-side' }, this.top, this.list_), this.read);
+    this.source = sourceBar(this.section);
+    this.root = h('div', { class: 'mailbox' }, h('div', { class: 'mail-side' }, this.source, this.top, this.list_), this.read);
     stage.append(this.root);
     await this.load();
   }
