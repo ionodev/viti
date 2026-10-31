@@ -2,6 +2,8 @@
 // changes becomes one commit), and a reader for the .tar.gz that a restore downloads.
 import { b64encode } from './util.js';
 
+export const EMPTY = 'This repository is empty, so GitHub cannot keep Viti’s backup branch in it yet. Give it a first commit (a README is enough): on GitHub, or click the backup status in Viti and choose “Start it with a README”.';
+
 export class GitHub {
   constructor(env) {
     this.api = (env.GITHUB_API || 'https://api.github.com').replace(/\/$/, '');
@@ -21,9 +23,22 @@ export class GitHub {
     if (res.status === 404 && ok404) return null;
     if (!res.ok) {
       const t = await res.text().catch(() => '');
+      // a repository with no commits yet: GitHub keeps no branches in it until it has one
+      if (res.status === 409 && /repository is empty/i.test(t)) throw Object.assign(new Error(EMPTY), { code: 'empty-repo' });
       throw new Error(`GitHub ${method} ${path.split('?')[0]} → ${res.status}${res.status === 401 || res.status === 403 ? ' (check the token: Contents read/write on this repo)' : ''} ${t.slice(0, 160)}`);
     }
     return res.json();
+  }
+
+  // an empty repository's first commit: a README on its default branch (only when you ask for it in Viti)
+  async startEmpty(title) {
+    const content = b64encode(new TextEncoder().encode(`# ${title}\n`));
+    const res = await fetch(`${this.api}/repos/${this.repo}/contents/README.md`, {
+      method: 'PUT',
+      headers: { authorization: `Bearer ${this.token}`, accept: 'application/vnd.github+json', 'x-github-api-version': '2022-11-28', 'user-agent': 'viti', 'content-type': 'application/json' },
+      body: JSON.stringify({ message: 'Add a README', content }),
+    });
+    if (!res.ok) throw new Error(`GitHub could not add the README (${res.status}).`);
   }
 
   // files: { path: string | Uint8Array | null }  (null deletes). One commit on the branch (made if missing).

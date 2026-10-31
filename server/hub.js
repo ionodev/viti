@@ -1153,6 +1153,12 @@ export class Hub extends DurableObject {
       }
 
       if (p === '/api/admin/sync' && method === 'GET') return json({ ok: true, sync: this.mirror.status() });
+      // an empty repository: Viti gives it its first commit (a README), then backs up
+      if (p === '/api/admin/start-repo' && method === 'POST') {
+        if (!this.mirror.gh.configured) return fail(400, 'not-configured', 'This project is not connected to GitHub.');
+        await this.mirror.gh.startEmpty(String(this.mirror.gh.repo || '').split('/')[1] || 'Project');
+        return json({ ok: true, sync: await this.mirror.syncNow(true) });
+      }
       if (p === '/api/admin/sync' && method === 'POST') {
         const b = await this.readBody(request);
         return json({ ok: true, sync: await this.mirror.syncNow(!!b.full) });

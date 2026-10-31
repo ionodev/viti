@@ -29,7 +29,7 @@ You can add as many projects as you like, and switch between them on the home sc
 ## Your data
 
 - **On your computer:** each project is kept in your Windows user folder, so Viti is fast and works offline too.
-- **On GitHub:** everything is also backed up to your repository, in a branch of its own called `viti-data`. Your code and your other branches are never touched. Opening the project on another computer brings it all back.
+- **On GitHub:** everything is also backed up to your repository, in a branch of its own. Your code and your other branches are never touched. Opening the project on another computer brings it all back.
 - **Your sign-ins** (GitHub, and the Gmail app password) stay on your computer, encrypted, and are only ever sent to GitHub and Google.
 - **Mail and public repositories:** because everything in a project is backed up to the repository, Viti does not let you link a mailbox in a public repository, where anyone could read it.
 

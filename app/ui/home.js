@@ -131,7 +131,7 @@ async function signIn(after) {
   const body = h(
     'div',
     { class: 'device' },
-    h('p', {}, 'Enter this code on GitHub to let Viti work with your repositories. It reads their branches and writes its own backup branch (', h('code', {}, 'viti-data'), '); your code is never changed.'),
+    h('p', {}, 'Enter this code on GitHub to let Viti work with your repositories. It reads their branches and keeps its backup in a branch of its own; your code is never changed.'),
     code,
     h('button', { class: 'btn', type: 'button', onclick: openGitHub }, 'Copy the code and open GitHub'),
     h('p', { class: 'device-note' }, 'This is not your authenticator code. If GitHub first asks you to log in, use your password and authenticator as usual; then paste this code (it is copied) and press Authorize.'),
@@ -249,7 +249,7 @@ async function connectWithToken() {
   const body = h(
     'div',
     {},
-    h('p', {}, 'Viti reads the repository’s branches and backs your project up to a branch of its own (', h('code', {}, 'viti-data'), '). Your code is never changed.'),
+    h('p', {}, 'Viti reads the repository’s branches and backs your project up to a branch of its own. Your code is never changed.'),
     h('div', { class: 'field' }, h('label', {}, 'Repository'), repo),
     h('div', { class: 'field' }, h('label', {}, 'GitHub token'), token, h('small', {}, 'A fine-grained token with Contents: Read and write on this repository.')),
     tokenHelp(),
@@ -322,7 +322,7 @@ async function newToken(p) {
 }
 
 async function remove(p) {
-  const r = await modal(`Remove ${p.repo}?`, h('p', {}, 'It is taken off your list and its copy on this computer is deleted. What was backed up stays on GitHub (the viti-data branch), so connecting it again brings it all back.'), [
+  const r = await modal(`Remove ${p.repo}?`, h('p', {}, 'It is taken off your list and its copy on this computer is deleted. What was backed up stays on GitHub, so connecting it again brings it all back.'), [
     { label: 'Cancel', value: false },
     { label: 'Remove', value: true, danger: true },
   ]);

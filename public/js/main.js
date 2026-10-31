@@ -150,6 +150,23 @@ function chrome() {
   });
   $('#sync').addEventListener('click', async () => {
     if (!S.sync?.configured) return toast('This project is not backed up: sign in with GitHub on the home screen (or give the project a token in its ⋯ menu there).');
+    // an empty repository: offer to give it its first commit
+    if (/repository is empty/i.test(S.sync.error || '')) {
+      const go = await modal('The repository is empty', h('p', {}, 'GitHub cannot keep Viti’s backup branch in a repository with no commits. Viti can start it with a README (one small file on its main branch), and then back up as usual.'), [
+        { label: 'Not now', value: false },
+        { label: 'Start it with a README', value: true, primary: true },
+      ]);
+      if (go !== true) return;
+      try {
+        const r = await api('POST', '/api/admin/start-repo', {});
+        S.sync = r.sync;
+        drawSync();
+        toast(r.sync.ok === false ? `The backup failed: ${r.sync.error}` : 'The repository has a README now, and the project is backed up.', r.sync.ok === false);
+      } catch (e) {
+        toast(e.message, true);
+      }
+      return;
+    }
     try {
       toast('Backing up to GitHub…');
       const r = await api('POST', '/api/admin/sync', {});
@@ -548,7 +565,7 @@ function drawSync() {
   const el = $('#sync');
   const s = S.sync || {};
   el.className = 'sync ' + (!s.configured ? 'off' : s.ok === false ? 'bad' : 'ok');
-  el.textContent = !s.configured ? 'Not backed up' : s.ok === false ? 'Backup failed: click to retry' : s.at ? `Backed up ${ago(s.at)}${s.pending ? ' · more waiting' : ''}` : 'Backup: waiting for the first run';
+  el.textContent = !s.configured ? 'Not backed up' : s.ok === false && /repository is empty/i.test(s.error || '') ? 'Empty repository: click to start it' : s.ok === false ? 'Backup failed: click to retry' : s.at ? `Backed up ${ago(s.at)}${s.pending ? ' · more waiting' : ''}` : 'Backup: waiting for the first run';
   el.title = !s.configured ? 'Sign in with GitHub on the home screen to back this project up.' : s.error || 'Everything is also kept in the repository on GitHub (in a branch of its own). Click to back up now.';
 }
 function drawTitle() {
