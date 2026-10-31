@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Viti</title>
+<link rel="icon" href="/img/icon-64.png">
+<link rel="stylesheet" href="/css/tokens.css">
+<link rel="stylesheet" href="/css/desktop.css">
+<link rel="stylesheet" href="/ui/home.css">
+<script src="/theme.js"></script>
+</head>
+<body class="home">
+<header class="home-top">
+  <div class="home-brand"><span class="cairn-mark"></span><span>Viti</span></div>
+  <button id="look" class="btn ghost small" title="Theme and accent colour">Appearance</button>
+</header>
+<main class="home-main">
+  <div class="home-head">
+    <div>
+      <h1>Your projects</h1>
+      <p class="sub">Each project is a GitHub repository. Its branches tag your to-dos and reports, and everything you add is backed up to a <code>viti-data</code> branch of it.</p>
+    </div>
+    <button id="connect" class="btn">Connect a repository</button>
+  </div>
+  <div id="projects" class="projects"></div>
+</main>
+<div id="toasts"></div>
+<script type="module" src="/ui/home.js"></script>
+</body>
+</html>

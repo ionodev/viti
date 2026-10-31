@@ -5,22 +5,26 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <title>Viti</title>
-<link rel="icon" href="/favicon.png">
+<link rel="icon" href="/img/icon-64.png">
+<link rel="stylesheet" href="/css/tokens.css">
 <link rel="stylesheet" href="/css/app.css">
+<link rel="stylesheet" href="/css/desktop.css">
 <link rel="stylesheet" href="/vendor/katex.css">
+<script src="/theme.js"></script>
 </head>
 <body class="loading">
 <header id="topbar">
   <button id="menu-btn" class="icon" title="Show or hide the section menu">&#9776;</button>
   <div class="titles"><p class="label" id="kind">Board</p><h1 id="title"></h1></div>
-  <a class="brand" href="#/">
-    <span class="disc"><img src="/img/logo-192.png" alt=""></span>
-    <span class="brand-name">VITI</span>
+  <a class="brand" href="/home" title="All your projects">
+    <span class="cairn-mark"></span>
+    <span class="brand-name">Viti</span>
   </a>
 </header>
 <aside id="sidebar">
+  <button id="project-btn" class="project-btn" title="Back to all your projects"><span class="pi"></span><span class="pt"><b></b><small></small></span><span class="chev">&#8644;</span></button>
   <button id="search-btn" class="side-search" title="Search everything (Ctrl+K)"><span>Search…</span><kbd>Ctrl K</kbd></button>
-  <div class="branchbar" title="Which branch of the game you are looking at: its page in each board, and its reports"><label for="branch-view">Branch</label><select id="branch-view"></select></div>
+  <div class="branchbar" title="Which branch of the repository you are looking at: its page in each board, and its reports"><label for="branch-view">Branch</label><select id="branch-view"></select></div>
   <div id="projectcat"></div>
   <p class="label">Sections</p>
   <nav id="sections"></nav>

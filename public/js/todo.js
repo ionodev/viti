@@ -7,12 +7,12 @@ import { h, ago, stamp, toast } from './ui.js';
 import { renderInto } from './md.js';
 import { Bugs } from './bugs.js';
 
-export const VITI = 'viti'; // for to-dos about Viti itself: not a branch of the game, so not in "All branches", not in the menu's Branch field, and not for sections
+export const VITI = 'viti'; // (the web version's tag for to-dos about Viti itself; the desktop app offers none)
 
 export class Todo extends Bugs {
-  // the branches a row can carry: the game's, and viti
+  // the branches a row can carry: the repository's
   branchChoices() {
-    return [...S.branches.list, VITI];
+    return S.branches.list;
   }
   // "All branches" does not include the viti rows: pick viti to see those
   hiddenInAll(b) {

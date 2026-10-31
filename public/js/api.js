@@ -51,7 +51,7 @@ export async function prepareImage(file) {
   return { blob, w, h, name: file.name || 'image' };
 }
 
-// the game's branches; the answer is kept on the server for a few minutes, so asking often is cheap
+// the repository's branches; the answer is kept on the server for a few minutes, so asking often is cheap
 export async function loadBranches() {
   try {
     const r = await api('GET', '/api/branches');

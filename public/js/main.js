@@ -86,13 +86,27 @@ function applyState(st) {
 function fatal(e) {
   const box = $('#fatal');
   const setup = e.code === 'not-configured';
-  box.replaceChildren(h('div', {}, h('h2', {}, setup ? 'Not set up yet' : e.status === 401 || e.status === 403 ? 'Sign in required' : 'Something went wrong'), h('p', {}, e.message), setup ? h('p', {}, 'See README.md, step 2: add this app to Cloudflare Access and set ACCESS_TEAM_DOMAIN and ACCESS_AUD.') : null));
+  box.replaceChildren(h('div', {}, h('h2', {}, setup ? 'Not set up yet' : e.status === 401 || e.status === 403 ? 'Sign in required' : 'Something went wrong'), h('p', {}, e.message), h('p', {}, h('a', { href: '/home' }, 'Back to your projects'))));
   box.hidden = false;
   document.body.classList.remove('loading');
 }
 
 // ------------------------------------------------------------------ the sidebar and the title bar
 function chrome() {
+  // the project (the repository) this is, at the top of the menu: click it to go back to all of them
+  fetch('/app/state')
+    .then((r) => r.json())
+    .then((st) => {
+      const p = st.projects?.find((x) => x.id === st.current);
+      if (!p) return;
+      const [owner, name] = p.repo.split('/');
+      $('#project-btn .pi').textContent = name.charAt(0).toUpperCase();
+      $('#project-btn b').textContent = name;
+      $('#project-btn small').textContent = owner;
+      document.title = `${name} · Viti`;
+    })
+    .catch(() => {});
+  $('#project-btn').addEventListener('click', () => (location.href = '/home'));
   $('#add-section').addEventListener('click', async () => {
     const name = await promptBox('New section', 'Name', '', 'Create');
     if (!name) return;
@@ -151,7 +165,7 @@ function chrome() {
     }
   });
   $('#sync').addEventListener('click', async () => {
-    if (!S.sync?.configured) return toast('The GitHub backup is not set up yet (README.md, step 4).');
+    if (!S.sync?.configured) return toast('This project has no GitHub token, so it is not backed up. Add one on the home screen (the project’s ⋯ menu).');
     try {
       toast('Backing up to GitHub…');
       const r = await api('POST', '/api/admin/sync', {});
@@ -271,9 +285,9 @@ async function showLatest(id) {
   chat.markRead();
 }
 
-// the branch subsections of a main board, in the order of the game's branches (the latest first)
+// the branch subsections of a main board, in the order of the repository's branches (the latest first)
 function childrenOf(id) {
-  // oldest branch first: main on top, then the others as they came (the game's list is newest first, so it is read backwards)
+  // oldest branch first: main on top, then the others as they came (the repository's list is newest first, so it is read backwards)
   const rank = (s) => {
     if (s.branch === 'main') return -1;
     const i = S.branches.list.indexOf(s.branch);
@@ -328,9 +342,9 @@ function addPdfEl(s, branch = '') {
     input.click();
   } }, h('span', { class: 'hash' }, '+'), h('span', { class: 'nm' }, 'PDF'));
 }
-// "+ Branch": make a subsection for a branch of the game that does not have one yet
+// "+ Branch": make a subsection for a branch of the repository that does not have one yet
 function addBranchEl(s) {
-  return h('button', { class: 'sec sub addsub', title: 'A board for one branch of the game', onclick: async (e) => {
+  return h('button', { class: 'sec sub addsub', title: 'A board for one branch of the repository', onclick: async (e) => {
     const x = e.clientX;
     const y = e.clientY;
     const { list } = await loadBranches();

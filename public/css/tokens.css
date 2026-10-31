@@ -1,0 +1,75 @@
+/* Viti's colours, as tokens: one set for the light theme, one for the dark, and the accent (any colour
+   the user picks, set by theme.js along with the ink that reads on it). Everything else in the app
+   uses these, so a theme or an accent changes it all. */
+:root {
+  --accent: #6d5efc;
+  --accent-ink: #ffffff;
+  --accent-soft: color-mix(in srgb, var(--accent) 14%, transparent);
+  --accent-softer: color-mix(in srgb, var(--accent) 8%, transparent);
+  --accent-line: color-mix(in srgb, var(--accent) 45%, transparent);
+  --accent-text: color-mix(in srgb, var(--accent) 78%, var(--text));
+  --font: 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  --font-display: 'Segoe UI Variable Display', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  --code: 'Cascadia Code', 'Cascadia Mono', Consolas, ui-monospace, 'SF Mono', monospace;
+  --r: 10px;
+  --r-sm: 7px;
+  --r-xs: 5px;
+  color-scheme: light;
+
+  /* light */
+  --bg: #f6f7f9;
+  --side-bg: #fbfbfc;
+  --panel: #ffffff;
+  --panel-2: #f3f4f6;
+  --sunken: #eef0f3;
+  --card: #ffffff;
+  --text: #15171c;
+  --text-2: #4d5360;
+  --text-3: #7d8390;
+  --border: #e4e6eb;
+  --border-2: #d2d6dd;
+  --hover: rgba(17, 24, 39, .05);
+  --hover-2: rgba(17, 24, 39, .08);
+  --shadow: 0 1px 2px rgba(16, 24, 40, .05), 0 1px 3px rgba(16, 24, 40, .07);
+  --shadow-md: 0 4px 12px rgba(16, 24, 40, .08), 0 1px 3px rgba(16, 24, 40, .06);
+  --shadow-lg: 0 18px 48px rgba(16, 24, 40, .16), 0 2px 6px rgba(16, 24, 40, .06);
+  --canvas: #f2f3f6;
+  --canvas-dot: #d3d7de;
+  --code-bg: #f1f2f5;
+  --scrim: rgba(15, 18, 25, .38);
+  --danger: #d6372b;
+  --ok: #138a4a;
+  --red: #d6372b;
+  --amber: #b86e00;
+  --green: #138a4a;
+  --blue: #2f6fe4;
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0f1013;
+  --side-bg: #131418;
+  --panel: #17191e;
+  --panel-2: #1b1d23;
+  --sunken: #121317;
+  --card: #1e2027;
+  --text: #e9ebef;
+  --text-2: #b0b5bf;
+  --text-3: #7f8592;
+  --border: #272a32;
+  --border-2: #343843;
+  --hover: rgba(255, 255, 255, .05);
+  --hover-2: rgba(255, 255, 255, .09);
+  --shadow: 0 1px 2px rgba(0, 0, 0, .35);
+  --shadow-md: 0 6px 16px rgba(0, 0, 0, .35);
+  --shadow-lg: 0 22px 56px rgba(0, 0, 0, .55);
+  --canvas: #121317;
+  --canvas-dot: #2a2d35;
+  --code-bg: #121317;
+  --scrim: rgba(0, 0, 0, .55);
+  --danger: #f2655a;
+  --ok: #3cc47c;
+  --red: #f2655a;
+  --amber: #e9a23b;
+  --green: #3cc47c;
+  --blue: #6b9cff;
+}

@@ -2,7 +2,7 @@
 export const S = {
   me: null, // { email, name, color }
   users: new Map(), // email -> { email, name, color }
-  branches: { list: [], latest: '' }, // the game's branches (for the tags on reports and to-dos), latest first
+  branches: { list: [], latest: '' }, // the repository's branches (for the tags on reports and to-dos), latest first
   categories: [], // your own headings in the menu: { id, name, pos }
   sections: [], // { id, name, kind, pos, unread }
   section: null, // the id of the one that is open

@@ -1,4 +1,5 @@
 // Personal settings, kept in this browser (so each device has its own), and the little sounds and pop-ups they control.
+import { appearanceControls } from './appearance.js';
 import { h, modal, toast } from './ui.js';
 import { pickAndImport } from './import.js';
 
@@ -116,7 +117,7 @@ export async function openSettings() {
         const ok = 'Notification' in window && (Notification.permission === 'granted' || (await Notification.requestPermission()) === 'granted');
         if (!ok) {
           box.checked = false;
-          return toast('The browser did not allow pop-up notifications. You can allow them in the site settings of the address bar.', true);
+          return toast('Windows did not allow notifications from Viti. You can allow them in Settings › System › Notifications.', true);
         }
       }
       setSetting(key, box.checked);
@@ -129,13 +130,14 @@ export async function openSettings() {
   const body = h(
     'div',
     { class: 'settings' },
+    ...appearanceControls(),
     h('p', { class: 'label' }, 'Sound'),
     row('mute', 'Mute notification sound', 'No chime when someone else writes.'),
     h('div', { class: 'setvol' }, h('span', {}, 'Volume'), vol, h('button', { class: 'btn small ghost', onclick: () => chime(true) }, 'Test')),
-    row('soundOnlyAway', 'Only play it when I am somewhere else', 'Stay quiet while this tab is the one in front.'),
+    row('soundOnlyAway', 'Only play it when I am somewhere else', 'Stay quiet while the Viti window is the one in front.'),
     h('p', { class: 'label' }, 'Alerts'),
-    row('desktop', 'Pop-up notifications', 'A message from your browser when this tab is in the background.'),
-    row('titleCount', 'Show the unread count in the tab title', 'For example: (3) Viti'),
+    row('desktop', 'Windows notifications', 'A notification from Windows when Viti is in the background.'),
+    row('titleCount', 'Show the unread count in the window title', 'For example: (3) Viti'),
     h('p', { class: 'label' }, 'Look and feel'),
     row('animate', 'Slide the menus', 'Turn off for instant opening and closing.'),
     row('cursors', "Show other people's pointers on a board"),
@@ -154,7 +156,7 @@ export async function openSettings() {
       sel.addEventListener('change', () => setSetting('deadRef', sel.value));
       return h('div', { class: 'setvol' }, h('span', {}, 'Count from'), sel);
     })(),
-    h('p', { class: 'hint' }, 'These settings are saved in this browser only.'),
+    h('p', { class: 'hint' }, 'These settings are kept on this computer.'),
     h('p', { class: 'label' }, 'Import'),
     h('p', { class: 'hint' }, 'Add a bundle of boards, reports and to-dos from a file (made from the Figma notes). Each bundle can only be imported once.'),
     h('button', { class: 'btn small ghost', onclick: () => pickAndImport() }, 'Import a bundle…'),

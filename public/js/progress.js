@@ -54,18 +54,6 @@ function stoneLook(i) {
   return l;
 }
 
-// the rules shown in the box in the corner of the page
-const RULES = [
-  'Planlegg spillet, og meld fra om planen.',
-  'Tilpass spillet etter evne og forhold.',
-  'Ta hensyn til tekniske varsler og prosjektfarer.',
-  'Vær forberedt på bugs og kriser, selv i små prosjekter.',
-  'Ta med nødvendig utstyr for å hjelpe deg selv og andre.',
-  'Velg trygge tekniske veier. Gjenkjenn risikabel kode og ustabile systemer.',
-  'Bruk kart og kompass. Vit alltid hvor du er i utviklingen.',
-  'Vend i tide. Det er ingen skam å forkaste en dårlig idé.',
-  'Spar på kreftene, og ta en pause når det trengs.',
-];
 
 export class Progress {
   constructor({ open } = {}) {
@@ -99,13 +87,7 @@ export class Progress {
       h('button', { class: 'cairn-reset', onclick: () => this.fit() }, 'Bottom'),
       h('button', { class: 'cairn-reset', title: 'Zoom to the newest stone on top', onclick: () => this.toTop() }, 'Top'),
     );
-    // "Kjenner du spillvettreglene?": a box in the upper right corner that opens into the rules, and closes again
-    const open = h('button', { class: 'rules-open', onclick: () => this.rules(true) }, 'Kjenner du spillvettreglene?');
-    const body = h('div', { class: 'rules-body', hidden: true }, h('div', { class: 'rules-head' }, h('b', {}, 'Spillvettreglene'), h('button', { class: 'rules-x', title: 'Lukk', onclick: () => this.rules(false) }, '×')), h('ol', {}, RULES.map((r) => h('li', {}, r))));
-    this.rulesBox = h('div', { class: 'rules' }, open, body);
-    this.rulesOpen = open;
-    this.rulesBody = body;
-    this.root_ = h('div', { class: 'progress' }, this.canvas, this.count, this.empty, this.tip, this.card, this.help, this.rulesBox);
+    this.root_ = h('div', { class: 'progress' }, this.canvas, this.count, this.empty, this.tip, this.card, this.help);
     stage.append(this.root_);
     this.ctx = this.canvas.getContext('2d');
     this.size();
@@ -116,10 +98,6 @@ export class Progress {
     });
     this.ro.observe(this.root_);
     await this.load(true);
-  }
-  rules(show) {
-    this.rulesBody.hidden = !show;
-    this.rulesOpen.hidden = show;
   }
   unmount() {
     clearTimeout(this.timer);
@@ -253,6 +231,11 @@ export class Progress {
     const c = this.ctx;
     const { W, H } = this;
     const { a, x: vx, y: vy, s } = this.view;
+    // the ground, the outline of the next stone and the highlight follow the theme and its accent
+    const css = getComputedStyle(document.documentElement);
+    const ground = css.getPropertyValue('--sunken').trim() || '#e8e9ed';
+    const accent = css.getPropertyValue('--accent').trim() || '#6d5efc';
+    const faint = css.getPropertyValue('--text-3').trim() || '#7d8390';
     c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     c.clearRect(0, 0, W, H);
     this.hits = [];
@@ -267,11 +250,11 @@ export class Progress {
       const wb = Math.pow(R, kBase);
       const gy = sy(yAt(kBase) - (ASP * wb) / 2 * 0.96);
       if (gy < H + 20) {
-        c.fillStyle = '#ddd5c0';
+        c.fillStyle = ground;
         c.fillRect(0, Math.max(0, gy), W, H);
         const g = c.createRadialGradient(sx(0), gy, 1, sx(0), gy, s * wb * 0.7);
-        g.addColorStop(0, 'rgba(60,50,30,.28)');
-        g.addColorStop(1, 'rgba(60,50,30,0)');
+        g.addColorStop(0, 'rgba(0,0,0,.22)');
+        g.addColorStop(1, 'rgba(0,0,0,0)');
         c.fillStyle = g;
         c.fillRect(0, Math.max(0, gy - s * wb * 0.1), W, H);
       }
@@ -295,7 +278,7 @@ export class Progress {
         if (wpx > 14 && wpx < 3e5) {
           this.blob(cx, cy, wpx, hpx, L.noise);
           c.setLineDash([6, 5]);
-          c.strokeStyle = 'rgba(80,70,50,.45)';
+          c.strokeStyle = faint;
           c.lineWidth = 1.5;
           c.stroke();
           c.setLineDash([]);
@@ -322,16 +305,18 @@ export class Progress {
         }
         if (this.hover === i) {
           this.blob(cx, cy, wpx, hpx, L.noise);
-          c.strokeStyle = '#e3b94a';
+          c.strokeStyle = accent;
           c.lineWidth = Math.max(2, Math.min(4, wpx / 30));
           c.stroke();
         }
         if (i === this.N - 1 && this.glow && performance.now() - this.glow < 2500) {
           c.beginPath();
           c.ellipse(cx, cy, wpx * 0.62, hpx * 0.72, 0, 0, Math.PI * 2);
-          c.strokeStyle = `rgba(227,185,74,${1 - (performance.now() - this.glow) / 2500})`;
+          c.globalAlpha = Math.max(0, 1 - (performance.now() - this.glow) / 2500);
+          c.strokeStyle = accent;
           c.lineWidth = Math.max(2, wpx / 20);
           c.stroke();
+          c.globalAlpha = 1;
         }
       }
       if (wpx > 10) this.hits.push({ x: cx, y: cy, sw: wpx, sh: hpx, i });

@@ -15,10 +15,10 @@ const CSP = "default-src 'self'; img-src 'self' https: data: blob:; style-src 's
 const DATA_BRANCH = 'viti-data';
 
 // root: the app folder; dataDir: where projects and settings live; seal/unseal: keep tokens encrypted
-export async function startServer({ root, dataDir, seal, unseal, port = 0 }) {
+export async function startServer({ root, dataDir, seal, unseal, port = 0, key: givenKey }) {
   const PUBLIC = path.join(root, 'public');
   const UI = path.join(root, 'app', 'ui');
-  const key = crypto.randomBytes(24).toString('hex');
+  const key = givenKey || crypto.randomBytes(24).toString('hex');
   const cfgFile = path.join(dataDir, 'viti.json');
   const tokFile = path.join(dataDir, 'tokens.json');
   fs.mkdirSync(path.join(dataDir, 'projects'), { recursive: true });

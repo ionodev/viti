@@ -146,7 +146,7 @@ export class Bugs {
     } catch {}
     this.layout();
   }
-  // the branch dropdown: every branch of the game, plus any a card carries that is no longer in the list
+  // the branch dropdown: every branch of the repository, plus any a card carries that is no longer in the list
   fillBranchSelect() {
     const names = [...this.branchChoices()];
     for (const b of this.all.values()) if (b.branch && !names.includes(b.branch)) names.push(b.branch);
@@ -229,7 +229,7 @@ export class Bugs {
     const ordered = this.order[key] === 'oldest' ? rows : rows.reverse();
     if (this.sortBy === 'priority') return ordered.map((b, i) => [b, i]).sort((x, y) => (PRANK[x[0].priority] ?? 9) - (PRANK[y[0].priority] ?? 9) || x[1] - y[1]).map((x) => x[0]);
     if (this.sortBy !== 'branch') return ordered;
-    // grouped by branch, the game's latest branch first and cards with no branch last; inside a branch the usual order stays
+    // grouped by branch, the repository's latest branch first and cards with no branch last; inside a branch the usual order stays
     const rank = (b) => {
       const i = S.branches.list.indexOf(b.branch);
       return b.branch ? (i < 0 ? 1e6 : i) : 1e9;
@@ -495,7 +495,7 @@ export class Bugs {
     api('PATCH', '/api/bugs/' + b.id, { due }).catch((e) => (toast(e.message, true), this.load()));
   }
 
-  // the branch tag of a report or to-do: click it to pick another of the game's branches
+  // the branch tag of a report or to-do: click it to pick another of the repository's branches
   branchChip(b) {
     const name = b.branch || '';
     return h('button', { class: 'chip branch' + (name ? '' : ' none unset'), title: 'The branch this is about: click to change', onclick: (e) => this.pickBranch(e, b) }, '\u2387 ', name || 'no branch');
@@ -532,7 +532,7 @@ export class Bugs {
     this.fillBranchSelect();
     this.draw();
   }
-  // a <select> of the game's branches with the latest chosen
+  // a <select> of the repository's branches with the latest chosen
   branchSelect() {
     const list = this.branchChoices();
     const { latest } = S.branches;
