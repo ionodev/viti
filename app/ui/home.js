@@ -1,5 +1,6 @@
-// The home screen: your projects (GitHub repositories). Open one, connect a new one, give one a new
-// token, or take one off the list. Talks to the app's own server (/app/*, app/server.js).
+// The home screen: your projects (GitHub repositories). Sign in with GitHub once, then connect a
+// repository by picking it from yours; open one, or take one off the list. (A token pasted by hand still
+// works, for a repository the sign-in cannot reach.) Talks to the app's own server (/app/*, app/server.js).
 import { h, ago, toast, modal, menu } from '/js/ui.js';
 import { appearanceControls } from '/js/appearance.js';
 
@@ -15,7 +16,31 @@ async function call(method, path, body) {
 
 async function load() {
   state = await call('GET', '/app/state');
+  drawAccount();
   draw();
+}
+
+// top right: who you are signed in as (click for Sign out), or the button to sign in
+function drawAccount() {
+  const box = document.getElementById('account');
+  const a = state.account;
+  if (a) {
+    box.replaceChildren(
+      h('button', { class: 'account', title: 'Signed in with GitHub', onclick: (e) => {
+        const r = e.currentTarget.getBoundingClientRect();
+        menu(r.left, r.bottom + 4, [{ label: `Signed in as ${a.login}`, fn: () => window.open(`https://github.com/${a.login}`) }, { label: 'Sign out', danger: true, fn: signOut }]);
+      } }, a.avatar ? h('img', { src: a.avatar, alt: '' }) : null, h('span', {}, a.name || a.login)),
+    );
+  } else box.replaceChildren(state.canSignIn ? h('button', { class: 'btn ghost small', onclick: () => signIn() }, 'Sign in with GitHub') : '');
+}
+async function signOut() {
+  const r = await modal('Sign out?', h('p', {}, 'Viti forgets your GitHub sign-in on this computer. Your projects stay, but they cannot read branches or back up until you sign in again.'), [
+    { label: 'Cancel', value: false },
+    { label: 'Sign out', value: true, danger: true },
+  ]);
+  if (r !== true) return;
+  await call('POST', '/app/signout');
+  load();
 }
 
 function draw() {
@@ -37,7 +62,7 @@ function card(p) {
     { class: 'proj' + (p.open ? ' open' : ''), role: 'button', tabindex: '0', onclick: () => open(p), onkeydown: (e) => e.key === 'Enter' && open(p) },
     more,
     h('div', { class: 'proj-top' }, h('span', { class: 'proj-tile' }, name.charAt(0).toUpperCase()), h('span', { class: 'proj-name' }, h('b', {}, name), h('small', {}, owner))),
-    h('div', { class: 'proj-meta' }, h('span', { class: 'tag' }, p.private ? 'Private' : 'Public'), p.open ? h('span', { class: 'tag live' }, 'Open now') : null, p.hasToken ? null : h('span', { class: 'tag warn' }, 'Needs a token')),
+    h('div', { class: 'proj-meta' }, h('span', { class: 'tag' }, p.private ? 'Private' : 'Public'), p.open ? h('span', { class: 'tag live' }, 'Open now') : null, p.hasToken ? null : h('span', { class: 'tag warn' }, 'Not signed in')),
     h('div', { class: 'proj-foot' }, h('span', { class: 'who' }, p.user?.avatar ? h('img', { src: p.user.avatar, alt: '' }) : null, h('span', {}, p.user?.name || '')), h('span', {}, p.opened ? `Opened ${ago(p.opened)}` : 'Not opened yet')),
   );
 }
@@ -47,7 +72,7 @@ function projectMenu(e, p) {
   menu(r.left - 140, r.bottom + 4, [
     { label: 'Open', fn: () => open(p) },
     { label: 'Open on GitHub', fn: () => window.open(`https://github.com/${p.repo}`) },
-    { label: 'New token…', fn: () => newToken(p) },
+    { label: 'Use a token…', fn: () => newToken(p) },
     { label: 'Remove from Viti…', danger: true, fn: () => remove(p) },
   ]);
 }
@@ -82,7 +107,141 @@ function tokenHelp(repo) {
   );
 }
 
+// connecting: sign in first if need be, then pick a repository
 async function connect() {
+  if (state.account) return pickRepo();
+  if (state.canSignIn) return signIn(pickRepo);
+  return connectWithToken();
+}
+
+// "Sign in with GitHub": Viti shows a code, opens github.com/login/device, and waits while you enter it there
+async function signIn(after) {
+  let start;
+  try {
+    start = await call('POST', '/app/signin/start');
+  } catch (e) {
+    return toast(e.message, true);
+  }
+  const code = h('div', { class: 'device-code' }, start.userCode);
+  const status = h('p', { class: 'device-status' }, h('span', { class: 'spin small' }), 'Waiting for you to approve Viti on GitHub…');
+  const openGitHub = () => {
+    navigator.clipboard?.writeText(start.userCode).catch(() => {});
+    window.open(start.url);
+  };
+  const body = h(
+    'div',
+    { class: 'device' },
+    h('p', {}, 'Enter this code on GitHub to let Viti work with your repositories. It reads their branches and writes its own backup branch (', h('code', {}, 'viti-data'), '); your code is never changed.'),
+    code,
+    h('button', { class: 'btn', type: 'button', onclick: openGitHub }, 'Copy the code and open GitHub'),
+    status,
+  );
+  let done = false;
+  const box = modal('Sign in with GitHub', body, [{ label: 'Cancel', value: false }]);
+  const overlay = document.querySelector('.overlay:last-of-type');
+  openGitHub();
+  // ask GitHub every few seconds until you have approved (or said no, or the code ran out)
+  let wait = (start.interval || 5) * 1000;
+  const poll = async () => {
+    if (!overlay.isConnected) return;
+    let r;
+    try {
+      r = await call('POST', '/app/signin/poll');
+    } catch (e) {
+      r = { status: 'pending' };
+    }
+    if (r.status === 'pending') {
+      wait = (r.interval || start.interval || 5) * 1000;
+      return setTimeout(poll, wait);
+    }
+    if (r.status === 'done') {
+      done = true;
+      overlay._close(true);
+      await load();
+      toast(`Signed in as ${r.account.login}.`);
+      return after?.();
+    }
+    status.replaceChildren(r.status === 'denied' ? 'The sign-in was cancelled on GitHub.' : r.status === 'failed' ? r.error || 'The sign-in did not work.' : 'The code ran out. Close this and sign in again.');
+    status.classList.add('bad');
+  };
+  setTimeout(poll, wait);
+  await box;
+  return done;
+}
+
+// picking one of your repositories (the ones you can write to, most recently pushed first)
+async function pickRepo() {
+  const search = h('input', { type: 'text', placeholder: 'Search your repositories…', autocomplete: 'off', spellcheck: 'false' });
+  const list = h('div', { class: 'repo-list' }, h('div', { class: 'repo-empty' }, h('span', { class: 'spin small' }), 'Getting your repositories…'));
+  const err = h('p', { class: 'err', hidden: true });
+  let repos = [];
+  const body = h(
+    'div',
+    {},
+    search,
+    list,
+    err,
+    h('p', { class: 'repo-other' }, 'Not on the list? ', h('a', { href: '#', onclick: (e) => (e.preventDefault(), overlay._close(false), connectWithToken()) }, 'Connect it with a token instead'), '.'),
+  );
+  const box = modal('Connect a repository', body, [{ label: 'Cancel', value: false }]);
+  const overlay = document.querySelector('.overlay:last-of-type');
+  overlay.querySelector('.dialog').classList.add('wide');
+  const pick = async (r) => {
+    if (r.added) return;
+    err.hidden = true;
+    list.classList.add('busy-list');
+    try {
+      const out = await call('POST', '/app/projects', { repo: r.repo });
+      overlay._close(true);
+      await load();
+      const p = state.projects.find((x) => x.id === out.id);
+      if (p) open(p);
+    } catch (x) {
+      list.classList.remove('busy-list');
+      err.textContent = x.message;
+      err.hidden = false;
+    }
+  };
+  const paint = () => {
+    const q = search.value.trim().toLowerCase();
+    const shown = repos.filter((r) => !q || r.repo.toLowerCase().includes(q) || r.description.toLowerCase().includes(q)).slice(0, 200);
+    list.replaceChildren(
+      ...(shown.length
+        ? shown.map((r) => {
+            const [owner, name] = r.repo.split('/');
+            return h(
+              'button',
+              { type: 'button', class: 'repo-row' + (r.added ? ' added' : ''), onclick: () => pick(r), title: r.added ? 'Already on your list' : `Connect ${r.repo}` },
+              h('span', { class: 'proj-tile small' }, name.charAt(0).toUpperCase()),
+              h('span', { class: 'repo-name' }, h('b', {}, name), h('small', {}, owner + (r.description ? ' · ' + r.description : ''))),
+              h('span', { class: 'tag' }, r.added ? 'Added' : r.private ? 'Private' : 'Public'),
+            );
+          })
+        : [h('div', { class: 'repo-empty' }, repos.length ? 'No repository matches.' : 'No repositories you can write to were found.')]),
+    );
+  };
+  search.addEventListener('input', paint);
+  search.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    const first = list.querySelector('.repo-row:not(.added)');
+    first?.click();
+  });
+  setTimeout(() => search.focus(), 0);
+  call('GET', '/app/repos')
+    .then((r) => {
+      repos = r.repos || [];
+      paint();
+    })
+    .catch((x) => {
+      list.replaceChildren();
+      err.textContent = x.message;
+      err.hidden = false;
+    });
+  await box;
+}
+
+// the other way: a repository's name and a token made by hand (for one the sign-in cannot reach)
+async function connectWithToken() {
   const repo = h('input', { type: 'text', placeholder: 'owner/name, or https://github.com/owner/name', autocomplete: 'off', spellcheck: 'false' });
   const token = h('input', { type: 'password', placeholder: 'github_pat_…', autocomplete: 'off' });
   const err = h('p', { class: 'err', hidden: true });
@@ -96,7 +255,7 @@ async function connect() {
     err,
   );
   // the dialog stays open until it works (or is cancelled): errors are shown in it
-  const box = modal('Connect a repository', body, [
+  const box = modal('Connect with a token', body, [
     { label: 'Cancel', value: false },
     { label: 'Connect', value: true, primary: true },
   ]);

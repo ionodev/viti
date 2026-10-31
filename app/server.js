@@ -9,10 +9,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { openProject } from '../server/host.js';
+import { GITHUB_CLIENT_ID, SCOPE } from './github-app.js';
 
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf', '.webp': 'image/webp' };
 const CSP = "default-src 'self'; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' ws: wss:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'";
 const DATA_BRANCH = 'viti-data';
+// GitHub's addresses (another one only for testing)
+const GH_API = process.env.VITI_GITHUB_API || 'https://api.github.com';
+const GH_WEB = process.env.VITI_GITHUB_WEB || 'https://github.com';
 
 // root: the app folder; dataDir: where projects and settings live; seal/unseal: keep tokens encrypted
 export async function startServer({ root, dataDir, seal, unseal, port = 0, key: givenKey }) {
@@ -39,13 +43,16 @@ export async function startServer({ root, dataDir, seal, unseal, port = 0, key: 
   cfg.projects ||= [];
   const tokens = load(tokFile, {});
   const saveCfg = () => save(cfgFile, cfg);
-  const tokenOf = (id) => (tokens[id] ? unseal(tokens[id]) : '');
+  // a project's own token (pasted in by hand), or else the one from signing in with GitHub
+  const ACCOUNT = '@account';
+  const tokenOf = (id) => (tokens[id] ? unseal(tokens[id]) : tokens[ACCOUNT] ? unseal(tokens[ACCOUNT]) : '');
+  const hasToken = (id) => !!(tokens[id] || tokens[ACCOUNT]);
 
   let current = null; // { id, host }
 
   // ---- GitHub: is this a repository the token can write to, and who is the token's owner
   async function gh(token, p) {
-    const r = await fetch('https://api.github.com' + p, { headers: { authorization: `Bearer ${token}`, accept: 'application/vnd.github+json', 'x-github-api-version': '2022-11-28', 'user-agent': 'viti-desktop' } });
+    const r = await fetch(GH_API + p, { headers: { authorization: `Bearer ${token}`, accept: 'application/vnd.github+json', 'x-github-api-version': '2022-11-28', 'user-agent': 'viti-desktop' } });
     const body = await r.json().catch(() => ({}));
     return { status: r.status, body };
   }
@@ -61,13 +68,13 @@ export async function startServer({ root, dataDir, seal, unseal, port = 0, key: 
   async function check(repoIn, token) {
     const repo = cleanRepo(repoIn);
     if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) return { error: 'Write the repository as owner/name, or paste its GitHub address.' };
-    if (!token) return { error: 'A GitHub token is needed (see "How to make a token").' };
+    if (!token) return { error: 'Sign in with GitHub first (or paste a token).' };
     const me = await gh(token, '/user');
-    if (me.status === 401) return { error: 'GitHub did not accept the token. Check that it is copied whole and has not expired.' };
+    if (me.status === 401) return { error: 'GitHub did not accept the sign-in. Sign in again (or check that a pasted token is whole and has not expired).' };
     const r = await gh(token, `/repos/${repo}`);
-    if (r.status === 404) return { error: `GitHub does not show ${repo} to this token. Check the name, and that the token may see this repository.` };
+    if (r.status === 404) return { error: `GitHub does not show ${repo} to you. Check the name, and that you (or the token) may see this repository.` };
     if (r.status >= 400) return { error: `GitHub answered ${r.status}: ${r.body.message || 'something went wrong'}.` };
-    if (!r.body.permissions?.push) return { error: 'The token can read this repository but not write to it. Give it "Contents: Read and write".' };
+    if (!r.body.permissions?.push) return { error: 'You can read this repository but not write to it, and Viti needs to write its backup branch.' };
     const u = me.body;
     return {
       repo: r.body.full_name,
@@ -112,12 +119,88 @@ export async function startServer({ root, dataDir, seal, unseal, port = 0, key: 
   }
 
   // ---- the home screen's API
-  const view = (p) => ({ id: p.id, repo: p.repo, branch: p.branch, private: p.private, user: p.user, added: p.added, opened: p.opened || 0, open: current?.id === p.id, hasToken: !!tokens[p.id] });
+  const view = (p) => ({ id: p.id, repo: p.repo, branch: p.branch, private: p.private, user: p.user, added: p.added, opened: p.opened || 0, open: current?.id === p.id, hasToken: hasToken(p.id), ownToken: !!tokens[p.id] });
+
+  // ---- signing in with GitHub (the device flow): Viti shows a code, you enter it on github.com, and Viti
+  // asks GitHub every few seconds whether you have; then it has a token for your account (kept encrypted)
+  let device = null; // { code, interval, until }
+  async function ghPost(url, params) {
+    const r = await fetch(url, { method: 'POST', headers: { accept: 'application/json', 'content-type': 'application/x-www-form-urlencoded', 'user-agent': 'viti-desktop' }, body: new URLSearchParams(params) });
+    return r.json().catch(() => ({}));
+  }
+  async function signedIn(token) {
+    const me = await gh(token, '/user');
+    if (me.status !== 200) throw new Error('GitHub did not accept the sign-in.');
+    const u = me.body;
+    tokens[ACCOUNT] = seal(token);
+    save(tokFile, tokens);
+    cfg.account = { login: u.login, name: u.name || u.login, email: `${u.id}+${u.login}@users.noreply.github.com`, avatar: u.avatar_url };
+    // the projects that use the sign-in (no token of their own) are you now
+    for (const p of cfg.projects) if (!tokens[p.id]) p.user = cfg.account;
+    saveCfg();
+    repoCache = null;
+  }
+  // the repositories you can write to (most recently pushed first), to pick one from
+  let repoCache = null;
+  async function myRepos() {
+    if (repoCache && Date.now() - repoCache.at < 60000) return repoCache.list;
+    const token = tokens[ACCOUNT] ? unseal(tokens[ACCOUNT]) : '';
+    if (!token) return [];
+    const list = [];
+    for (let page = 1; page <= 5; page++) {
+      const r = await gh(token, `/user/repos?per_page=100&page=${page}&sort=pushed&affiliation=owner,collaborator,organization_member`);
+      if (r.status !== 200 || !Array.isArray(r.body)) break;
+      for (const x of r.body) if (x.permissions?.push && !x.archived) list.push({ repo: x.full_name, private: !!x.private, description: x.description || '', pushed: Date.parse(x.pushed_at) || 0 });
+      if (r.body.length < 100) break;
+    }
+    repoCache = { at: Date.now(), list };
+    return list;
+  }
   async function appApi(req, res, url) {
     const send = (status, body) => (res.writeHead(status, { 'content-type': 'application/json', 'cache-control': 'no-store' }), res.end(JSON.stringify(body)));
     const body = req.method === 'GET' ? {} : await readJson(req);
     const p = url.pathname;
-    if (p === '/app/state' && req.method === 'GET') return send(200, { ok: true, prefs: cfg.prefs, projects: cfg.projects.map(view).sort((a, b) => b.opened - a.opened || b.added - a.added), current: current?.id || null });
+    if (p === '/app/state' && req.method === 'GET') return send(200, { ok: true, prefs: cfg.prefs, account: tokens[ACCOUNT] ? cfg.account || null : null, canSignIn: !!GITHUB_CLIENT_ID, projects: cfg.projects.map(view).sort((a, b) => b.opened - a.opened || b.added - a.added), current: current?.id || null });
+    if (p === '/app/signin/start' && req.method === 'POST') {
+      if (!GITHUB_CLIENT_ID) return send(400, { ok: false, error: 'Signing in with GitHub is not set up in this build of Viti yet. Use a token for now.' });
+      const r = await ghPost(GH_WEB + '/login/device/code', { client_id: GITHUB_CLIENT_ID, scope: SCOPE });
+      if (!r.device_code) return send(502, { ok: false, error: 'GitHub did not start the sign-in' + (r.error_description ? ': ' + r.error_description : '.') });
+      device = { code: r.device_code, interval: Math.max(5, r.interval || 5), until: Date.now() + (r.expires_in || 900) * 1000 };
+      return send(200, { ok: true, userCode: r.user_code, url: r.verification_uri || 'https://github.com/login/device', interval: device.interval, expiresIn: r.expires_in || 900 });
+    }
+    if (p === '/app/signin/poll' && req.method === 'POST') {
+      if (!device || Date.now() > device.until) return send(200, { ok: true, status: 'expired' });
+      const r = await ghPost(GH_WEB + '/login/oauth/access_token', { client_id: GITHUB_CLIENT_ID, device_code: device.code, grant_type: 'urn:ietf:params:oauth:grant-type:device_code' });
+      if (r.access_token) {
+        device = null;
+        try {
+          await signedIn(r.access_token);
+        } catch (e) {
+          return send(200, { ok: true, status: 'failed', error: e.message });
+        }
+        return send(200, { ok: true, status: 'done', account: cfg.account });
+      }
+      if (r.error === 'slow_down') device.interval += 5;
+      if (r.error === 'authorization_pending' || r.error === 'slow_down') return send(200, { ok: true, status: 'pending', interval: device.interval });
+      device = null;
+      return send(200, { ok: true, status: r.error === 'access_denied' ? 'denied' : 'expired' });
+    }
+    if (p === '/app/signout' && req.method === 'POST') {
+      delete tokens[ACCOUNT];
+      save(tokFile, tokens);
+      cfg.account = null;
+      saveCfg();
+      repoCache = null;
+      return send(200, { ok: true });
+    }
+    if (p === '/app/repos' && req.method === 'GET') {
+      try {
+        const have = new Set(cfg.projects.map((x) => x.repo.toLowerCase()));
+        return send(200, { ok: true, repos: (await myRepos()).map((r) => ({ ...r, added: have.has(r.repo.toLowerCase()) })) });
+      } catch (e) {
+        return send(502, { ok: false, error: e.message });
+      }
+    }
     if (p === '/app/prefs' && req.method === 'PUT') {
       if (['system', 'light', 'dark'].includes(body.theme)) cfg.prefs.theme = body.theme;
       if (/^#[0-9a-f]{6}$/i.test(body.accent || '')) cfg.prefs.accent = body.accent.toLowerCase();
@@ -125,13 +208,18 @@ export async function startServer({ root, dataDir, seal, unseal, port = 0, key: 
       return send(200, { ok: true, prefs: cfg.prefs });
     }
     if (p === '/app/projects' && req.method === 'POST') {
-      const c = await check(body.repo, String(body.token || '').trim());
+      // with your GitHub sign-in, or with a pasted token of its own
+      const own = String(body.token || '').trim();
+      const c = await check(body.repo, own || (tokens[ACCOUNT] ? unseal(tokens[ACCOUNT]) : ''));
       if (c.error) return send(400, { ok: false, error: c.error });
       if (cfg.projects.some((x) => x.repo.toLowerCase() === c.repo.toLowerCase())) return send(400, { ok: false, error: `${c.repo} is already on your list.` });
       const id = crypto.randomBytes(6).toString('hex');
       cfg.projects.push({ id, repo: c.repo, branch: DATA_BRANCH, private: c.private, user: c.user, added: Date.now(), opened: 0 });
-      tokens[id] = seal(String(body.token).trim());
-      save(tokFile, tokens);
+      if (own) {
+        tokens[id] = seal(own);
+        save(tokFile, tokens);
+      }
+      repoCache = null;
       saveCfg();
       return send(200, { ok: true, id });
     }
