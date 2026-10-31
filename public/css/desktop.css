@@ -294,16 +294,23 @@ kbd { background: var(--panel-2); border: 1px solid var(--border-2); border-bott
 
 /* the add box on top of the Open list: write and press Enter; under it the branch, and a report's screenshots */
 .add-opts { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
-.add-opts .prio-slide { flex: 1 1 210px; }
-/* never wider than the list: the slider shrinks with it, and when it is narrow the level's name goes onto a
-   line of its own inside the box */
-.add-opts > * { min-width: 0; max-width: 100%; }
-.prio-slide { min-width: 0; flex-wrap: wrap; row-gap: 2px; }
-.prio-slide .ps-track { flex: 1 1 60px; min-width: 40px; }
-.todo-form { min-width: 0; }
+/* Nothing jumps when a list gets narrower: rows keep their layout at every width, and what does not fit is
+   shortened (…) instead of moving to another line. */
+/* a to-do row: checkbox, text and X on one line, always */
+.bug.todo { flex-wrap: nowrap; }
+.bug.todo .todo-body { flex: 1 1 0; min-width: 0; }
+.bug.todo .tbox, .bug.todo .tx, .bug.todo .todo-btn { flex: none; }
+/* under the text: who and when on one line, the tags on the next */
+.todo-foot { display: flex; flex-direction: column; align-items: stretch; gap: 4px; flex-wrap: nowrap; }
+.todo-foot .todo-meta { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.todo-tags, .bug-meta { display: flex; gap: 6px; flex-wrap: nowrap; min-width: 0; overflow: hidden; }
+.todo-tags:empty { display: none; }
+.todo-tags > *, .bug-meta > * { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* the add box: the text, then the priority (its name above the slider), then the branch, each on a line of its own */
+.todo-form { min-width: 0; flex-direction: column; flex-wrap: nowrap; align-items: stretch; }
 .todo-form .todo-add { min-width: 0; width: 100%; }
-.add-opts .branch-select { flex: 1 1 140px !important; }
-.todo-form .add-opts .branch-select { flex: 1 1 0; min-width: 0; max-width: none; }
+.add-opts { flex-direction: column; flex-wrap: nowrap; align-items: stretch; }
+.add-opts > * { min-width: 0; max-width: 100%; flex: none !important; width: 100%; }
 .add-shots { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 6px; }
 .add-shot { position: relative; }
 .add-shot img { display: block; width: 64px; height: 48px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border); }
@@ -392,3 +399,20 @@ body.noanim .ps-thumb, body.noanim .ps-fill { transition: none; }
 .cm-input:focus, .cm-text:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .cm-bar { display: flex; gap: 8px; }
 .mail-read:has(.mail-compose) { display: flex; flex-direction: column; }
+
+/* the priority in the add box, the same at every width: its name above, the slider below */
+.add-opts .prio-slide { min-width: 0; flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 6px; padding: 7px 12px 9px; }
+.add-opts .prio-slide .prio-name { order: -1; width: auto; min-width: 0; }
+.add-opts .prio-slide .ps-track { flex: none; min-width: 0; width: auto; margin: 0 7px; }
+
+/* the header of the lists (Show, search, branch, sort): one line at every width, so nothing below it moves when
+   the menu or the chat opens; the search and the branch shrink first, and the rest scrolls sideways if need be */
+.bugtop { flex-wrap: nowrap !important; height: 44px !important; min-height: 44px; padding-top: 0 !important; padding-bottom: 0 !important; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+.bugtop::-webkit-scrollbar { display: none; }
+.bugtop > * { flex: none; }
+.bugtop .bugtools { flex: 1 0 auto !important; flex-wrap: nowrap !important; justify-content: flex-end; min-width: 0; }
+.bugtop .bugtools > .bug-search { flex: 1 1 140px !important; min-width: 90px; max-width: 220px; }
+.bugtop .bugtools > .branch-filter { flex: 0 1 170px !important; min-width: 100px; }
+.bugs { top: 44px !important; }
+.mail-tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+.mail-tabs .tab { flex: none; }

@@ -76,7 +76,8 @@ export class Todo extends Bugs {
     const row = h('div', { class: `bug todo ${b.status}`, dataset: { id: b.id, section: this.section }, oncontextmenu: (e) => this.onCardContext(e, b) });
     const meta = h('span', { class: 'todo-meta', title: stamp(b.ts) }, `${b.name} · ${ago(b.ts)}`);
     const chip = S.branches.list.length || b.branch ? this.branchChip(b) : null;
-    const body = h('div', { class: 'todo-body' }, text, h('div', { class: 'todo-foot' }, meta, chip, ...this.prioChips(b)));
+    // (who and when on a line of their own, the tags on the next: nothing moves when the list gets narrower)
+    const body = h('div', { class: 'todo-body' }, text, h('div', { class: 'todo-foot' }, meta, h('span', { class: 'todo-tags' }, chip, ...this.prioChips(b))));
     // open: tick it done, or X (not needed); closed: untick to reopen; trash: Restore. The rest is in the more menu (or a right-click).
     if (b.status === 'open') row.append(h('button', { class: 'tbox', title: 'Done', onclick: () => this.move(b.id, 'closed') }), body, this.cardTools(b), h('button', { class: 'tx', title: 'Not needed: move to Trash', onclick: () => this.move(b.id, 'trash') }, '✕'));
     else if (b.status === 'closed') row.append(h('button', { class: 'tbox on', title: 'Not done after all: reopen', onclick: () => this.move(b.id, 'open') }, '✓'), body, this.cardTools(b));
