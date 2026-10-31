@@ -295,6 +295,13 @@ kbd { background: var(--panel-2); border: 1px solid var(--border-2); border-bott
 /* the add box on top of the Open list: write and press Enter; under it the branch, and a report's screenshots */
 .add-opts { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
 .add-opts .prio-slide { flex: 1 1 210px; }
+/* never wider than the list: the slider shrinks with it, and when it is narrow the level's name goes onto a
+   line of its own inside the box */
+.add-opts > * { min-width: 0; max-width: 100%; }
+.prio-slide { min-width: 0; flex-wrap: wrap; row-gap: 2px; }
+.prio-slide .ps-track { flex: 1 1 60px; min-width: 40px; }
+.todo-form { min-width: 0; }
+.todo-form .todo-add { min-width: 0; width: 100%; }
 .add-opts .branch-select { flex: 1 1 140px !important; }
 .todo-form .add-opts .branch-select { flex: 1 1 0; min-width: 0; max-width: none; }
 .add-shots { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 6px; }
