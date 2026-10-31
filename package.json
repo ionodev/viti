@@ -8,7 +8,8 @@
   "type": "module",
   "scripts": {
     "start": "electron .",
-    "dist": "electron-builder --win"
+    "dev": "node app/dev.mjs",
+    "dist": "electron-builder --win nsis portable"
   },
   "devDependencies": {
     "electron": "^38.8.6",
@@ -20,5 +21,44 @@
   "allowScripts": {
     "electron@38.8.6": true,
     "electron-winstaller@5.4.0": true
+  },
+  "author": "Varden Games",
+  "build": {
+    "appId": "com.vardengames.viti",
+    "productName": "Viti",
+    "copyright": "\u00a9 2026 Varden Games",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "app/**/*",
+      "!app/dev.mjs",
+      "server/**/*",
+      "public/**/*",
+      "package.json"
+    ],
+    "asar": true,
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Viti",
+      "artifactName": "Viti-Setup-${version}.${ext}",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico"
+    },
+    "portable": {
+      "artifactName": "Viti-${version}-portable.${ext}"
+    }
   }
 }
