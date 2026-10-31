@@ -13,9 +13,9 @@ export class Todo extends Bugs {
   branchChoices() {
     return S.branches.list;
   }
-  // "All branches" does not include the viti rows: pick viti to see those
-  hiddenInAll(b) {
-    return b.branch === VITI;
+  // (the web version hid its "viti" rows from "All branches"; here they show like any other tag)
+  hiddenInAll() {
+    return false;
   }
   // viti is picked here only (not in the menu's Branch field), so it is kept on this page
   get branchFilter() {
@@ -37,7 +37,7 @@ export class Todo extends Bugs {
   }
   // the viti rows are not counted in the number by the menu entry
   counts() {
-    return Object.fromEntries(['open', 'closed', 'trash'].map((k) => [k, [...this.all.values()].filter((b) => b.status === k && b.branch !== VITI).length]));
+    return Object.fromEntries(['open', 'closed', 'trash'].map((k) => [k, [...this.all.values()].filter((b) => b.status === k).length]));
   }
   fillBranchSelect() {
     super.fillBranchSelect();

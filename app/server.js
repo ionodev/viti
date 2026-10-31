@@ -83,6 +83,28 @@ export async function startServer({ root, dataDir, seal, unseal, port = 0, key: 
     };
   }
 
+  // ---- where a repository's Viti backup is: the desktop app's own place (viti-data, folder viti), or the web
+  // Viti's (hub-data, folder hub: the team hub in vardengames_dev). A viti.json beside it can say where the
+  // branch tags come from (another repository: the web hub takes them from the game's). None yet: the
+  // desktop's place, and the repository's own branches.
+  const PLACES = [[DATA_BRANCH, 'viti'], ['hub-data', 'hub']];
+  async function findBackup(repo, token) {
+    for (const [branch, dir] of PLACES) {
+      const meta = await gh(token, `/repos/${repo}/contents/${dir}/meta.json?ref=${branch}`);
+      if (meta.status !== 200) continue;
+      let branchesFrom = '';
+      const desc = await gh(token, `/repos/${repo}/contents/${dir}/viti.json?ref=${branch}`);
+      if (desc.status === 200 && desc.body.content) {
+        try {
+          const d = JSON.parse(Buffer.from(desc.body.content, 'base64').toString('utf8'));
+          if (/^[\w.-]+\/[\w.-]+$/.test(d.branchesFrom || '')) branchesFrom = d.branchesFrom;
+        } catch {}
+      }
+      return { branch, dir, branchesFrom };
+    }
+    return { branch: DATA_BRANCH, dir: 'viti', branchesFrom: '' };
+  }
+
   // ---- open and close a project
   async function open(id) {
     const p = cfg.projects.find((x) => x.id === id);
@@ -94,13 +116,28 @@ export async function startServer({ root, dataDir, seal, unseal, port = 0, key: 
     const dbFile = path.join(dir, 'viti.sqlite');
     const fresh = !fs.existsSync(dbFile);
     const token = tokenOf(id);
-    const env = { GITHUB_REPO: p.repo, GITHUB_TOKEN: token, GITHUB_BRANCH: p.branch || DATA_BRANCH, GITHUB_DIR: 'viti', KOLVER_REPO: p.repo, KOLVER_TOKEN: token, MIRROR_DELAY_MS: '60000' };
-    const host = await openProject({ dbFile, env, user: p.user });
+    const env = { GITHUB_REPO: p.repo, GITHUB_TOKEN: token, GITHUB_BRANCH: p.branch || DATA_BRANCH, GITHUB_DIR: p.dir || 'viti', KOLVER_REPO: p.branchesFrom || p.repo, KOLVER_TOKEN: token, MIRROR_DELAY_MS: '60000' };
+    // (who you are in this project: your GitHub sign-in, unless the backup already knows you by another address)
+    const who = { ...(p.user || {}), ...(p.as ? { email: p.as } : {}) };
+    const host = await openProject({ dbFile, env, user: who });
     // a new copy of a project others already use: start from what is on GitHub
     if (fresh && token) {
       try {
         await host.hub.mirror.restore();
         p.restored = Date.now();
+        // a backup from an older Viti (the web version as deployed, say): bring it up to date, as the app
+        // does with its own database when it starts (the Calendar, the PROJECT category...)
+        host.hub.run("DELETE FROM meta WHERE k LIKE 'layout%'");
+        host.hub.init();
+        // someone in the backup with your name is you (the web version knew people by another address)
+        // (by the whole name or the login; else by the first name, if only one person there has it)
+        const people = host.hub.q('SELECT email, name FROM users');
+        const low = (n) => String(n || '').trim().toLowerCase();
+        const names = [p.user?.name, p.user?.login].filter(Boolean).map(low);
+        let same = people.filter((u) => names.includes(low(u.name)));
+        const first = low(p.user?.name).split(/\s+/)[0];
+        if (!same.length && first) same = people.filter((u) => low(u.name).split(/\s+/)[0] === first);
+        if (same.length === 1) p.as = who.email = same[0].email;
       } catch (e) {
         if (!/no backup/i.test(e.message)) console.error('restore:', e.message);
       }
@@ -214,7 +251,8 @@ export async function startServer({ root, dataDir, seal, unseal, port = 0, key: 
       if (c.error) return send(400, { ok: false, error: c.error });
       if (cfg.projects.some((x) => x.repo.toLowerCase() === c.repo.toLowerCase())) return send(400, { ok: false, error: `${c.repo} is already on your list.` });
       const id = crypto.randomBytes(6).toString('hex');
-      cfg.projects.push({ id, repo: c.repo, branch: DATA_BRANCH, private: c.private, user: c.user, added: Date.now(), opened: 0 });
+      const place = await findBackup(c.repo, own || unseal(tokens[ACCOUNT] || ''));
+      cfg.projects.push({ id, repo: c.repo, branch: place.branch, dir: place.dir, branchesFrom: place.branchesFrom, private: c.private, user: c.user, added: Date.now(), opened: 0 });
       if (own) {
         tokens[id] = seal(own);
         save(tokFile, tokens);

@@ -729,7 +729,7 @@ export class Hub extends DurableObject {
       users: this.users(),
       sections,
       categories: this.categories(),
-      bugCounts: Object.fromEntries(this.q("SELECT id FROM sections WHERE kind IN ('bugs', 'todo', 'mail')").map((sec) => [sec.id, { unread: this.one("SELECT COUNT(*) AS c FROM bugs WHERE status='open' AND COALESCE(seen, 0)=0 AND COALESCE(section, 'bugs')=?", sec.id).c, ...Object.fromEntries(BUG_STATUS.map((s) => [s, this.one("SELECT COUNT(*) AS c FROM bugs WHERE status=? AND COALESCE(section, 'bugs')=? AND COALESCE(branch, '') != 'viti'", s, sec.id).c]))}])),
+      bugCounts: Object.fromEntries(this.q("SELECT id FROM sections WHERE kind IN ('bugs', 'todo', 'mail')").map((sec) => [sec.id, { unread: this.one("SELECT COUNT(*) AS c FROM bugs WHERE status='open' AND COALESCE(seen, 0)=0 AND COALESCE(section, 'bugs')=?", sec.id).c, ...Object.fromEntries(BUG_STATUS.map((s) => [s, this.one("SELECT COUNT(*) AS c FROM bugs WHERE status=? AND COALESCE(section, 'bugs')=?", s, sec.id).c]))}])),
       presence: this.presence(),
       sync: this.mirror.status(),
       dev: this.env.DEV_MODE === '1',
@@ -759,8 +759,8 @@ export class Hub extends DurableObject {
       if (p === '/api/state' && method === 'GET') return json(this.state(email));
       if (p === '/api/branches' && method === 'GET') return json({ ok: true, ...(await this.branches()) });
       if (p === '/api/progress' && method === 'GET') {
-        // every to-do row and every report that is Closed is a stone, in the order they were finished (not the viti tasks: those are about this tool, not the game)
-        const rows = this.q("SELECT b.id, b.name, b.message, b.ts, b.moved, s.id AS sid, s.name AS sname, s.kind AS skind FROM bugs b JOIN sections s ON s.id = COALESCE(b.section, 'bugs') WHERE s.kind IN ('todo', 'bugs') AND b.status='closed' AND COALESCE(b.branch, '') != 'viti' ORDER BY COALESCE(b.moved, b.ts), b.id");
+        // every to-do row and every report that is Closed is a stone, in the order they were finished 
+        const rows = this.q("SELECT b.id, b.name, b.message, b.ts, b.moved, s.id AS sid, s.name AS sname, s.kind AS skind FROM bugs b JOIN sections s ON s.id = COALESCE(b.section, 'bugs') WHERE s.kind IN ('todo', 'bugs') AND b.status='closed' ORDER BY COALESCE(b.moved, b.ts), b.id");
         return json({ ok: true, tasks: rows.map((r) => ({ id: r.id, text: r.message, name: r.name, ts: r.moved || r.ts, where: r.sname, kind: r.skind, section: r.sid })) });
       }
       // the Calendar: dates people have labelled (and pointed at something), and the open tasks that have a deadline
