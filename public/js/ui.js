@@ -37,7 +37,11 @@ export const dayLabel = (ts) => {
   return d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
 };
 
-export const avatar = (u, big) => h('span', { class: 'av' + (big ? ' big' : ''), style: { background: u.color || '#888' }, title: u.name }, (u.name || '?').charAt(0).toUpperCase());
+// a person's picture (their GitHub one), or else the first letter of their name on their colour
+export const avatar = (u, big) =>
+  u.avatar && /^https:\/\//.test(u.avatar)
+    ? h('span', { class: 'av pic' + (big ? ' big' : ''), title: u.name }, h('img', { src: u.avatar, alt: '', referrerpolicy: 'no-referrer', onerror: (e) => e.target.parentNode.replaceWith(avatar({ ...u, avatar: '' }, big)) }))
+    : h('span', { class: 'av' + (big ? ' big' : ''), style: { background: u.color || '#888' }, title: u.name }, (u.name || '?').charAt(0).toUpperCase());
 
 // a short message in the corner; with an action ({ label, fn }) it has a button too (Undo), and stays a little longer
 export function toast(text, bad, action) {

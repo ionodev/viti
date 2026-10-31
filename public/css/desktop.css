@@ -437,3 +437,42 @@ body.noanim .ps-thumb, body.noanim .ps-fill { transition: none; }
 .tips ul { list-style: none; margin: 8px 0 12px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .tips li { display: flex; gap: 8px; align-items: baseline; font-size: 13px; color: var(--text-2); }
 .tips kbd { flex: none; }
+
+/* a person's GitHub picture */
+.av.pic { background: var(--panel-2); overflow: hidden; padding: 0; }
+.av.pic img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 50%; }
+
+/* a mailbox: conversations, formatted emails, attachments */
+.mail-row .from .who { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mail-row .cnt { margin-left: 6px; font: 600 11px var(--font); color: var(--text-3); }
+.mail-row .clip { margin-right: 4px; font-size: 12px; }
+.mail-msg h2 .conv-n { margin-left: 10px; font: 500 12.5px var(--font); color: var(--text-3); vertical-align: 3px; }
+.conv { display: flex; flex-direction: column; gap: 10px; }
+.em { border: 1px solid var(--border); border-radius: 12px; background: var(--panel); padding: 12px 14px; }
+.em.folded { cursor: pointer; padding: 10px 14px; }
+.em.folded:hover { border-color: var(--border-2); }
+.em-head { display: flex; align-items: baseline; gap: 8px; cursor: pointer; min-width: 0; }
+.em-head b { font: 600 13.5px var(--font); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.em-head .addr { font-size: 12px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.em-head time { margin-left: auto; flex: none; font-size: 12px; color: var(--text-3); }
+.em-peek { margin-top: 2px; font-size: 13px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.em-rcpt { margin-top: 2px; font-size: 12px; color: var(--text-3); overflow-wrap: anywhere; }
+.em .mail-body { margin-top: 10px; }
+.em-html { margin-top: 10px; }
+.em-frame { display: block; width: 100%; height: 120px; border: 1px solid var(--border); border-radius: 8px; background: #fff; }
+.em-images { font-size: 12.5px; color: var(--text-3); margin-bottom: 6px; }
+.link-btn { border: 0; background: none; padding: 0; color: var(--accent-text); font: inherit; text-decoration: underline; cursor: pointer; }
+.em-files, .cm-files { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.cm-files:empty { display: none; }
+.file { display: inline-flex; align-items: center; gap: 8px; max-width: 260px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel-2); color: var(--text); text-decoration: none; font-size: 12.5px; }
+.file:hover { border-color: var(--accent-line); }
+.file .fi { flex: none; min-width: 34px; padding: 2px 4px; border-radius: 5px; background: var(--accent-soft); color: var(--accent-text); font: 700 10px var(--font); text-align: center; }
+.file .fn { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file small { flex: none; color: var(--text-3); }
+.file button { flex: none; border: 0; background: none; color: var(--text-3); font-size: 14px; padding: 0 2px; }
+.file.skipped .fi { background: color-mix(in srgb, var(--amber) 16%, transparent); color: var(--amber); }
+.file.pic { padding: 0; overflow: hidden; width: 96px; height: 72px; cursor: zoom-in; }
+.file.pic img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cm-bar .grow { flex: 1; }
+.ms-sig { width: 100%; min-height: 110px; resize: vertical; padding: 9px 11px; font: 14px/1.5 var(--font); background: var(--panel); color: var(--text); border: 1px solid var(--border-2); border-radius: 8px; outline: none; }
+.ms-sig:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }

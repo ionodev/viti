@@ -62,12 +62,25 @@ export async function openProject({ dbFile, env, user }) {
         });
       });
     },
-    // the name people see: set on the first open (the welcome question is then not asked)
-    async name(name) {
-      if (!name) return;
-      const r = hub.one('SELECT named FROM users WHERE email=?', user.email);
-      if (r?.named) return;
-      await hub.fetch(new Request('http://local/api/me', { method: 'PATCH', headers: { 'x-hub-user': user.email, 'content-type': 'application/json', origin: 'http://local' }, body: JSON.stringify({ name }) }));
+    // who you are here, from your GitHub account: your GitHub picture always, and your GitHub username as your
+    // name, unless you chose another one yourself (the welcome question is then not asked)
+    async profile({ login = '', name = '', avatar = '' } = {}) {
+      hub.ensureUser(user.email);
+      const r = hub.one('SELECT name, named, COALESCE(avatar, \'\') AS avatar FROM users WHERE email=?', user.email);
+      let changed = false;
+      if (avatar && r.avatar !== avatar) {
+        hub.run('UPDATE users SET avatar=? WHERE email=?', avatar, user.email);
+        changed = true;
+      }
+      // (a name Viti filled in from GitHub before, the display name, becomes the username)
+      if (login && (!r.named || (name && r.name === name)) && r.name !== login) {
+        hub.run('UPDATE users SET name=?, named=1 WHERE email=?', login, user.email);
+        changed = true;
+      }
+      if (changed) {
+        hub.markDirty('meta');
+        hub.bcAll({ t: 'users', users: hub.users() });
+      }
     },
     // the backup now (before closing), then shut
     async close() {

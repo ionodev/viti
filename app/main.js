@@ -1,7 +1,7 @@
 // Viti for Windows: starts the local server (app/server.js), gives the window its key, and opens the
 // home screen. Projects, settings and GitHub tokens are kept in the user's app data folder
 // (%APPDATA%\Viti); tokens are encrypted with Windows' own protection for this user (safeStorage).
-import { app, BrowserWindow, session, safeStorage, shell, Menu, nativeTheme } from 'electron';
+import { app, BrowserWindow, session, safeStorage, shell, Menu, nativeTheme, Notification } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -11,6 +11,8 @@ const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PORT = 47821; // (the same address every run, so what pages remember stays; another one if it is taken)
 
 if (!app.requestSingleInstanceLock()) app.quit();
+// (Windows shows notifications under the app's id)
+if (process.platform === 'win32') app.setAppUserModelId('io.github.ionodev.viti');
 
 const seal = (t) => (safeStorage.isEncryptionAvailable() ? 'v1:' + safeStorage.encryptString(t).toString('base64') : 'v0:' + Buffer.from(t).toString('base64'));
 const unseal = (s) => {
@@ -46,7 +48,18 @@ console.log(`Viti ${app.getVersion()} starting`);
 
 async function start() {
   const dataDir = app.getPath('userData');
-  const about = { version: app.getVersion(), logFile, openPath: (p) => shell.openPath(p) };
+  const notify = (title, body) => {
+    if (!Notification.isSupported() || (win && win.isFocused())) return;
+    const n = new Notification({ title, body, icon: path.join(root, 'build', 'icon.png'), silent: false });
+    n.on('click', () => {
+      if (!win) return;
+      if (win.isMinimized()) win.restore();
+      win.show();
+      win.focus();
+    });
+    n.show();
+  };
+  const about = { version: app.getVersion(), logFile, openPath: (p) => shell.openPath(p), notify };
   try {
     srv = await startServer({ root, dataDir, seal, unseal, port: PORT, ...about });
   } catch {

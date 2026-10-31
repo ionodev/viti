@@ -397,7 +397,7 @@ function secEl(s) {
     { class: 'sec' + (s.id === S.section ? ' on' : '') + (s.unread ? ' unread' : ''), dataset: { id: s.id }, href: `#/${s.id}`, onclick: (e) => clickSection(s, e), oncontextmenu: (e) => !s.core && (e.preventDefault(), sectionMenu(e.clientX, e.clientY, s)) },
     h('span', { class: 'hash' }, glyph(s.kind)),
     h('span', { class: 'nm' }, s.name),
-    open ? h('span', { class: 'badge quiet', title: s.kind === 'mail' ? 'Unread mail' : 'Open reports' }, open) : null,
+    open ? h('span', { class: 'badge' + (s.kind === 'mail' ? '' : ' quiet'), title: s.kind === 'mail' ? 'New emails' : 'Open reports' }, open) : null,
     s.unread ? h('span', { class: 'golddot', title: `${s.unread} new message${s.unread === 1 ? '' : 's'}` }, s.unread > 99 ? '99+' : String(s.unread)) : null,
     !s.core ? h('button', { class: 'dots', title: 'Rename or delete', onclick: (e) => (e.preventDefault(), e.stopPropagation(), sectionMenu(e.clientX, e.clientY, s)) }, '⋯') : null,
   );

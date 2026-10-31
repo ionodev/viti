@@ -55,7 +55,7 @@ export class Mirror {
     const out = {};
     const [kind, a, b] = key.split(':');
     if (kind === 'meta') {
-      out[P('meta.json')] = enc({ categories: h.q('SELECT id, name, pos, created, core FROM categories ORDER BY pos, created'), sections: h.q('SELECT id, name, kind, pos, created, category, parent, branch, file FROM sections ORDER BY pos, created'), users: h.q('SELECT email, name, color, created FROM users ORDER BY created') });
+      out[P('meta.json')] = enc({ categories: h.q('SELECT id, name, pos, created, core FROM categories ORDER BY pos, created'), sections: h.q('SELECT id, name, kind, pos, created, category, parent, branch, file FROM sections ORDER BY pos, created'), users: h.q("SELECT email, name, color, created, COALESCE(avatar, '') AS avatar FROM users ORDER BY created") });
     } else if (kind === 'board') {
       const sec = h.one('SELECT * FROM sections WHERE id=?', a);
       if (!sec || (sec.kind !== 'board' && sec.kind !== 'note')) {
@@ -231,7 +231,7 @@ export class Mirror {
         h.run('INSERT INTO sections (id, name, kind, pos, created, category, parent, branch, file) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', s.id, s.name, s.kind, s.pos, s.created, s.category || '', s.parent || '', s.branch || '', s.file || '');
         counts.sections++;
       }
-      for (const u of meta.users || []) h.run('INSERT INTO users (email, name, color, created, seen) VALUES (?, ?, ?, ?, ?)', u.email, u.name, u.color, u.created, u.created);
+      for (const u of meta.users || []) h.run('INSERT INTO users (email, name, color, created, seen, avatar) VALUES (?, ?, ?, ?, ?, ?)', u.email, u.name, u.color, u.created, u.created, u.avatar || '');
       for (const [p, bytes] of Object.entries(files)) {
         if (/^sections\/[a-z0-9-]+\/board\.json$/.test(p)) {
           for (const it of JSON.parse(dec.decode(bytes))) {
@@ -250,7 +250,7 @@ export class Mirror {
           for (const r of JSON.parse(dec.decode(bytes))) h.run('INSERT INTO calendar (id, date, title, ref, author, ts) VALUES (?, ?, ?, ?, ?, ?)', r.id, r.date, r.title || '', JSON.stringify(r.ref || null), r.author, r.ts);
         } else if (/^reports\/[a-z0-9-]+\/[a-z0-9]+\.json$/.test(p) || /^bugs\/[a-z0-9]+\.json$/.test(p)) {
           const r = JSON.parse(dec.decode(bytes));
-          h.run('INSERT INTO bugs (id, name, email, ts, browser, ua, page, message, status, moved, moved_by, images, source, section, subject, seen, branch, priority, due) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', r.id, r.name, r.email, r.ts, r.browser, r.ua, r.page, r.message, r.status, r.moved, r.moved_by, JSON.stringify(r.images || []), r.source, r.section || 'bugs', r.subject || '', r.seen ? 1 : 0, r.branch || '', r.priority || '', r.due || '');
+          h.run('INSERT INTO bugs (id, name, email, ts, browser, ua, page, message, status, moved, moved_by, images, source, section, subject, seen, branch, priority, due, html, files, rcpt, thread) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', r.id, r.name, r.email, r.ts, r.browser, r.ua, r.page, r.message, r.status, r.moved, r.moved_by, JSON.stringify(r.images || []), r.source, r.section || 'bugs', r.subject || '', r.seen ? 1 : 0, r.branch || '', r.priority || '', r.due || '', r.html || '', r.files || '', r.rcpt || '', r.thread || '');
           counts.bugs++;
         }
       }

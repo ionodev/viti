@@ -80,12 +80,26 @@ export function sourceBar(section, { compose } = {}) {
       h('span', { class: 'ms-text' }, h('b', {}, link.folderName), h('small', { title: link.error || '' }, `${PROVIDER[acc.provider]} · ${acc.address} · `, link.error ? h('span', { class: 'ms-bad' }, 'could not check') : when)),
       fetchNow,
       compose ? h('button', { class: 'ms-btn', title: 'New email', onclick: compose }, '✎') : null,
+      h('button', { class: 'ms-btn', title: 'Your signature', onclick: () => signature(acc) }, '✍'),
       h('button', { class: 'ms-btn', title: 'Link another label, or unlink', onclick: () => link_(section, st).then(draw) }, '⚙'),
     );
   };
   draw();
   bar.refresh = draw;
   return bar;
+}
+
+// the signature added to the emails you write from an account (here and in every other mailbox using it)
+async function signature(acc) {
+  const text = h('textarea', { class: 'ms-sig', placeholder: 'Your name\nWhat you do', maxlength: '2000' });
+  text.value = acc.signature || '';
+  const body = h('div', { class: 'ms-dialog' }, h('p', {}, `Added under what you write from ${acc.address}, above the quoted email. Leave it empty for none.`), text);
+  const { done } = working('Your signature', body, 'Save', async () => {
+    const r = await call('PATCH', `/app/mail/accounts/${acc.id}`, { signature: text.value.trim() });
+    acc.signature = r.account.signature;
+  });
+  setTimeout(() => text.focus(), 0);
+  await done;
 }
 
 // link a folder to this mailbox: pick (or connect) an account, then one of its folders

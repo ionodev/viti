@@ -14,6 +14,13 @@ import { parseUA } from './ua.js';
 import { Mirror } from './mirror.js';
 import { repoBranches } from './github.js';
 
+const parse = (s, d) => {
+  try {
+    return s ? JSON.parse(s) : d;
+  } catch {
+    return d;
+  }
+};
 export const LIMITS = { name: 60, msg: 8000, itemText: 20000, bug: 10000, image: 10 * 1024 * 1024, sections: 150, categories: 30, items: 3000, chunk: 1000000 };
 const NOTE_COLORS = ['yellow', 'white', 'red', 'orange', 'green', 'blue', 'purple'];
 const LEGACY_COLORS = { pink: 'red', cream: 'white', gold: 'orange' };
@@ -98,6 +105,14 @@ export class Hub extends DurableObject {
       } catch {}
     }
     this.ensureMail();
+    try {
+      this.run("ALTER TABLE users ADD COLUMN avatar TEXT DEFAULT ''"); // (a person's picture: their GitHub one)
+    } catch {}
+    for (const alter of ["ALTER TABLE bugs ADD COLUMN html TEXT DEFAULT ''", "ALTER TABLE bugs ADD COLUMN files TEXT DEFAULT ''", "ALTER TABLE bugs ADD COLUMN rcpt TEXT DEFAULT ''", "ALTER TABLE bugs ADD COLUMN thread TEXT DEFAULT ''"]) {
+      try {
+        this.run(alter);
+      } catch {} // (already there)
+    }
     // (to-dos and reports tagged with Viti's backup branch, before it was left out of the branches: no tag)
     this.run("UPDATE bugs SET branch='' WHERE lower(COALESCE(branch, '')) IN ('viti-data', 'hub-data')");
     if (this.getMeta('seeded')) {
@@ -222,7 +237,7 @@ export class Hub extends DurableObject {
     return u;
   }
   users() {
-    return this.q('SELECT email, name, color FROM users ORDER BY created');
+    return this.q("SELECT email, name, color, COALESCE(avatar, '') AS avatar FROM users ORDER BY created");
   }
 
   // ------------------------------------------------------------------ the mirror's list of what changed
@@ -680,7 +695,7 @@ export class Hub extends DurableObject {
 
   // ------------------------------------------------------------------ bug reports
   bugOut(r) {
-    return { id: r.id, name: r.name, email: r.email, ts: r.ts, browser: r.browser, ua: r.ua, page: r.page, message: r.message, status: r.status, moved: r.moved, movedBy: r.moved_by, images: JSON.parse(r.images || '[]'), source: r.source, section: r.section || 'bugs', subject: r.subject || '', seen: !!r.seen, branch: r.branch || '', priority: r.priority || '', due: r.due || '' };
+    return { id: r.id, name: r.name, email: r.email, ts: r.ts, browser: r.browser, ua: r.ua, page: r.page, message: r.message, status: r.status, moved: r.moved, movedBy: r.moved_by, images: JSON.parse(r.images || '[]'), source: r.source, section: r.section || 'bugs', subject: r.subject || '', seen: !!r.seen, branch: r.branch || '', priority: r.priority || '', due: r.due || '', html: r.html || '', files: parse(r.files, []), rcpt: parse(r.rcpt, null), thread: r.thread || '' };
   }
   // open: oldest first. closed and trash: newest first. (By the time it was sent.)
   bugLists(section = 'bugs') {
@@ -698,13 +713,36 @@ export class Hub extends DurableObject {
 
   // an email read from a linked folder (app/mail.js) into a mailbox; each one comes in once (its Message-ID
   // is kept in "page"). -> true if it was new
-  importMail(section, m) {
+  async importMail(section, m) {
     if (this.section(section)?.kind !== 'mail') return false;
     const page = clip('mail:' + m.ref, 300);
     if (this.one('SELECT id FROM bugs WHERE page=? AND section=?', page, section)) return false;
+    const { files, html } = await this.mailFiles(m);
     const row = this.insertBug({ name: m.name || m.email, email: m.email, ua: '', page, message: m.text || '(no text)', images: [], source: 'mail', ts: m.ts, section, subject: m.subject });
-    this.bcAll({ t: 'bug', bug: this.bugOut(row) });
+    this.mailExtras(row.id, { html, files, rcpt: m.rcpt, thread: m.thread });
+    this.bcAll({ t: 'bug', bug: this.bugOut(this.one('SELECT * FROM bugs WHERE id=?', row.id)) });
     return true;
+  }
+  // an email's attachments into the file store: -> { files: [{ id, name, type, size }], html } (pictures shown in
+  // the email itself, "cid:", point at their stored copy and are not listed again). Too large: listed, not kept.
+  async mailFiles(m) {
+    let html = m.html || '';
+    const files = [];
+    for (const a of m.attachments || []) {
+      if (!a.content?.length) continue;
+      if (a.content.length > LIMITS.image) {
+        files.push({ name: clip(a.name, 120), type: a.type || '', size: a.content.length, skipped: true });
+        continue;
+      }
+      const id = await this.saveFile(new Uint8Array(a.content), a.name, a.type, 'mail');
+      if (a.cid && html.includes('cid:' + a.cid)) html = html.split('cid:' + a.cid).join('/api/images/' + id);
+      else files.push({ id, name: clip(a.name || 'attachment', 120), type: a.type || '', size: a.content.length });
+    }
+    return { files, html };
+  }
+  mailExtras(id, { html = '', files = [], rcpt = null, thread = '' }) {
+    this.run('UPDATE bugs SET html=?, files=?, rcpt=?, thread=? WHERE id=?', clip(html, 400000), JSON.stringify(files || []), rcpt ? JSON.stringify(rcpt) : '', clip(thread, 300), id);
+    this.markDirty('bug:' + id);
   }
 
   // an email sent from a mailbox (app/server.js): kept in its Sent (to whom in name and email, from whom in ua)
@@ -712,7 +750,8 @@ export class Hub extends DurableObject {
     if (this.section(section)?.kind !== 'mail') return null;
     const row = this.insertBug({ name: m.toName || m.to, email: m.to, ua: 'from:' + m.from, page: clip('sent:' + (m.messageId || rid(12)), 300), message: m.text, images: [], source: 'sent', ts: m.ts || Date.now(), section, subject: m.subject });
     this.run('UPDATE bugs SET seen=1 WHERE id=?', row.id);
-    const bug = this.bugOut({ ...row, seen: 1 });
+    this.mailExtras(row.id, { html: m.html || '', files: m.files || [], rcpt: { to: String(m.to || '').split(/,\s*/).filter(Boolean), cc: String(m.cc || '').split(/,\s*/).filter(Boolean) }, thread: m.thread || m.messageId || '' });
+    const bug = this.bugOut(this.one('SELECT * FROM bugs WHERE id=?', row.id));
     this.bcAll({ t: 'bug', bug });
     return bug;
   }
@@ -720,7 +759,7 @@ export class Hub extends DurableObject {
   // an email you sent yourself, found in the linked label (Gmail labels your replies with the conversation's
   // label): into Sent, unless it is already there (sent from Viti: the same Message-ID, or the same subject to
   // the same person within ten minutes). -> true if it was new
-  importSent(section, m) {
+  async importSent(section, m) {
     if (this.section(section)?.kind !== 'mail') return false;
     const page = clip('sent:' + m.ref, 300);
     if (this.one('SELECT id FROM bugs WHERE page=? AND section=?', page, section)) return false;
@@ -728,7 +767,8 @@ export class Hub extends DurableObject {
     // (one that came in before as received mail is moved over instead)
     const was = this.one('SELECT id FROM bugs WHERE page=? AND section=?', clip('mail:' + m.ref, 300), section);
     if (was) this.dropBug(was.id);
-    this.recordSent(section, { to: m.to || '', toName: m.toName, from: m.from, subject: m.subject, text: m.text, messageId: m.ref, ts: m.ts });
+    const { files, html } = await this.mailFiles(m);
+    this.recordSent(section, { to: m.to || '', toName: m.toName, cc: (m.rcpt?.cc || []).join(', '), from: m.from, subject: m.subject, text: m.text, html, files, messageId: m.ref, thread: m.thread, ts: m.ts });
     return true;
   }
   // emails from your own address that came into the Inbox before Viti knew better: the ones Viti also has in
@@ -767,10 +807,26 @@ export class Hub extends DurableObject {
     }
     return { id, mime: kind[0] };
   }
+  async saveFile(bytes, name, type, by) {
+    if (!bytes.length || bytes.length > LIMITS.image) throw new Error('size');
+    const kind = sniffImage(bytes) || sniffPdf(bytes);
+    const id = (await sha256hex(bytes)).slice(0, 24);
+    if (!this.one('SELECT id FROM images WHERE id=?', id)) {
+      const ext = kind ? kind[1] : (String(name || '').match(/\.([a-z0-9]{1,8})$/i)?.[1] || 'bin').toLowerCase();
+      this.ctx.storage.transactionSync(() => {
+        this.run('INSERT INTO images (id, name, mime, ext, size, w, h, ts, by) VALUES (?, ?, ?, ?, ?, 0, 0, ?, ?)', id, clip(name || 'file', 120), kind ? kind[0] : clip(type || 'application/octet-stream', 100), ext, bytes.length, Date.now(), by);
+        for (let i = 0, n = 0; i < bytes.length; i += LIMITS.chunk, n++) this.run('INSERT INTO image_chunks (id, seq, data) VALUES (?, ?, ?)', id, n, bytes.slice(i, i + LIMITS.chunk).buffer);
+      });
+      this.markDirty('image:' + id, 'images-index');
+    }
+    return id;
+  }
   imageResponse(id, request) {
-    const row = this.one('SELECT mime, size FROM images WHERE id=?', id);
+    const row = this.one('SELECT mime, size, name FROM images WHERE id=?', id);
     if (!row) return fail(404, 'no-image');
-    const headers = { 'cache-control': 'private, max-age=31536000, immutable', etag: `"${id}"`, 'x-content-type-options': 'nosniff', 'content-type': row.mime };
+    // pictures and PDFs are shown; anything else is only ever saved (never opened as a page)
+    const shown = /^(image\/(png|jpeg|gif|webp)|application\/pdf)$/.test(row.mime);
+    const headers = { 'cache-control': 'private, max-age=31536000, immutable', etag: `"${id}"`, 'x-content-type-options': 'nosniff', 'content-type': shown ? row.mime : 'application/octet-stream', ...(shown ? {} : { 'content-disposition': `attachment; filename="${String(row.name || 'file').replace(/["\\\r\n]/g, '_')}"` }) };
     if (request.headers.get('if-none-match') === `"${id}"`) return new Response(null, { status: 304, headers });
     const out = new Uint8Array(row.size);
     let at = 0;

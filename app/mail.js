@@ -55,11 +55,28 @@ export async function fetchNew(cred, folder, state = {}) {
       for await (const m of client.fetch(range, { uid: true, source: true, internalDate: true }, { uid: !!after })) {
         if (m.uid <= after) continue; // (an IMAP range "n:*" always gives the last message, even an old one)
         lastUid = Math.max(lastUid, m.uid);
-        const p = await simpleParser(m.source);
+        // (pictures inside the email stay "cid:" links: Viti points them at its own copy)
+        const p = await simpleParser(m.source, { skipImageLinks: true });
         const from = p.from?.value?.[0] || {};
-        const to = (Array.isArray(p.to) ? p.to : p.to ? [p.to] : []).flatMap((x) => x.value || []);
+        const people = (v) => (Array.isArray(v) ? v : v ? [v] : []).flatMap((x) => x.value || []);
+        const to = people(p.to);
+        const cc = people(p.cc);
         const own = String(from.address || '').toLowerCase() === me;
-        const msg = { ref: p.messageId || `gmail:${folder}:${box.uidValidity}:${m.uid}`, name: from.name || '', email: from.address || '', subject: p.subject || '', text: (p.text || '').trim() || htmlToText(p.html || ''), ts: (p.date || m.internalDate || new Date()).getTime() };
+        const ref = p.messageId || `gmail:${folder}:${box.uidValidity}:${m.uid}`;
+        // the conversation it belongs to: the first email of it (References), else the one it answers, else itself
+        const refs = Array.isArray(p.references) ? p.references : p.references ? String(p.references).split(/\s+/) : [];
+        const msg = {
+          ref,
+          name: from.name || '',
+          email: from.address || '',
+          subject: p.subject || '',
+          text: (p.text || '').trim() || htmlToText(p.html || ''),
+          html: typeof p.html === 'string' ? p.html : '',
+          attachments: (p.attachments || []).map((a) => ({ name: a.filename || 'attachment', type: a.contentType || '', content: a.content, cid: a.contentId ? String(a.contentId).replace(/^<|>$/g, '') : '' })),
+          rcpt: { to: to.map((x) => x.address).filter(Boolean), cc: cc.map((x) => x.address).filter(Boolean) },
+          thread: refs[0] || p.inReplyTo || ref,
+          ts: (p.date || m.internalDate || new Date()).getTime(),
+        };
         out.push(own ? { ...msg, own: true, to: to.map((x) => x.address).filter(Boolean).join(', '), toName: to.length === 1 ? to[0].name || '' : '' } : unforward(msg));
       }
     }
@@ -68,12 +85,12 @@ export async function fetchNew(cred, folder, state = {}) {
 }
 
 // sending: Gmail's outgoing server (SMTP), with the same app password (VITI_SMTP=host:port: a test server).
-// msg: { to, cc, subject, text, inReplyTo, references } -> { messageId }
+// msg: { to, cc, subject, text, inReplyTo, references, attachments: [{ name, type, content }] } -> { messageId }
 const [SMTP_HOST, SMTP_PORT] = (process.env.VITI_SMTP || 'smtp.gmail.com:465').split(':');
 export async function send(cred, msg) {
   const t = nodemailer.createTransport({ host: SMTP_HOST, port: Number(SMTP_PORT), secure: !process.env.VITI_SMTP, ignoreTLS: !!process.env.VITI_SMTP, auth: { user: cred.address, pass: cred.password.replace(/\s+/g, '') }, connectionTimeout: 20000 });
   try {
-    const info = await t.sendMail({ from: cred.address, to: msg.to, cc: msg.cc || undefined, subject: msg.subject, text: msg.text, inReplyTo: msg.inReplyTo || undefined, references: msg.references || undefined });
+    const info = await t.sendMail({ from: cred.address, to: msg.to, cc: msg.cc || undefined, subject: msg.subject, text: msg.text, inReplyTo: msg.inReplyTo || undefined, references: msg.references || undefined, attachments: (msg.attachments || []).map((a) => ({ filename: a.name, contentType: a.type || undefined, content: a.content })) });
     return { messageId: info.messageId };
   } catch (e) {
     throw new Error(e.responseCode === 535 || /auth/i.test(e.message) ? 'Gmail did not accept the app password for sending. Connect the account again with a new one.' : `Gmail could not send it: ${e.message}`);

@@ -21,7 +21,7 @@ const GH_API = process.env.VITI_GITHUB_API || 'https://api.github.com';
 const GH_WEB = process.env.VITI_GITHUB_WEB || 'https://github.com';
 
 // root: the app folder; dataDir: where projects and settings live; seal/unseal: keep tokens encrypted
-export async function startServer({ root, dataDir, seal, unseal, port = 0, key: givenKey, version = '', logFile = '', openPath = null }) {
+export async function startServer({ root, dataDir, seal, unseal, port = 0, key: givenKey, version = '', logFile = '', openPath = null, notify = null }) {
   const PUBLIC = path.join(root, 'public');
   const UI = path.join(root, 'app', 'ui');
   const key = givenKey || crypto.randomBytes(24).toString('hex');
@@ -93,10 +93,21 @@ export async function startServer({ root, dataDir, seal, unseal, port = 0, key: 
           hub?.ownToSent(section, acc.address);
           const r = await mail.fetchNew(cred, link.folder, link.state);
           let added = 0;
+          let last = null;
           // what you sent yourself (Gmail labels your replies with the conversation's label) goes to Sent
-          for (const m of r.messages) if (m.own ? hub?.importSent(section, { ...m, from: acc.address }) : hub?.importMail(section, m)) added += m.own ? 0 : 1;
+          for (const m of r.messages) {
+            if (m.own) await hub?.importSent(section, { ...m, from: acc.address });
+            else if (await hub?.importMail(section, m)) (added++, (last = m));
+          }
           Object.assign(link, { state: r.state, fetched: Date.now(), error: '' });
           out[section] = { added };
+          // new mail: a notification from Windows (when Viti is not the window in front); not for the first fetch
+          // of a newly linked label, which brings in what was already there
+          if (added && link.notified !== undefined && notify) {
+            const box = hub?.section(section)?.name || 'a mailbox';
+            notify(added === 1 ? `${last.name || last.email}: ${last.subject || 'New email'}` : `${added} new emails`, `In ${box} · ${proj.repo.split('/')[1]}`);
+          }
+          link.notified = true;
         } catch (e) {
           link.error = e.message;
           out[section] = { added: 0, error: e.message };
@@ -225,7 +236,7 @@ export async function startServer({ root, dataDir, seal, unseal, port = 0, key: 
         if (!/no backup/i.test(e.message)) console.error('restore:', e.message);
       }
     }
-    await host.name(p.user?.name);
+    await host.profile(p.user || {});
     p.opened = Date.now();
     saveCfg();
     current = { id, host };
@@ -315,7 +326,7 @@ export async function startServer({ root, dataDir, seal, unseal, port = 0, key: 
   }
   async function appApi(req, res, url) {
     const send = (status, body) => (res.writeHead(status, { 'content-type': 'application/json', 'cache-control': 'no-store' }), res.end(JSON.stringify(body)));
-    const body = req.method === 'GET' ? {} : await readJson(req);
+    const body = req.method === 'GET' ? {} : await readJson(req, url.pathname.startsWith('/app/mail/send/') ? 40 * 1024 * 1024 : 64 * 1024);
     const p = url.pathname;
     let m0;
     if (p === '/app/state' && req.method === 'GET') return send(200, { ok: true, prefs: cfg.prefs, account: tokens[ACCOUNT] ? cfg.account || null : null, canSignIn: !!GITHUB_CLIENT_ID, projects: cfg.projects.map(view).sort((a, b) => b.opened - a.opened || b.added - a.added), current: current?.id || null });
@@ -382,6 +393,11 @@ export async function startServer({ root, dataDir, seal, unseal, port = 0, key: 
           return send(502, { ok: false, error: e.message });
         }
       }
+      if (!m0[2] && req.method === 'PATCH') {
+        acc.signature = String(body.signature || '').slice(0, 2000);
+        saveCfg();
+        return send(200, { ok: true, account: acc });
+      }
       if (!m0[2] && req.method === 'DELETE') {
         // forgotten here, and unlinked from every mailbox (the mail already in Viti stays)
         cfg.mail.accounts = cfg.mail.accounts.filter((a) => a.id !== acc.id);
@@ -427,10 +443,21 @@ export async function startServer({ root, dataDir, seal, unseal, port = 0, key: 
         const orig = current.host.hub.one('SELECT page FROM bugs WHERE id=?', String(body.reply));
         if (orig?.page?.startsWith('mail:')) inReplyTo = orig.page.slice(5);
       }
-      const msg = { to: to.join(', '), cc: cc.join(', '), subject: String(body.subject || '').slice(0, 300), text, inReplyTo: /^<.+>$/.test(inReplyTo) ? inReplyTo : '', references: /^<.+>$/.test(inReplyTo) ? inReplyTo : '' };
+      // what it answers (threads with it), and the conversation both belong to
+      let thread = '';
+      if (body.reply) {
+        const orig = current.host.hub.one('SELECT thread FROM bugs WHERE id=?', String(body.reply));
+        thread = orig?.thread || inReplyTo;
+      }
+      const attachments = (Array.isArray(body.attachments) ? body.attachments : []).slice(0, 10).map((a) => ({ name: String(a.name || 'attachment').slice(0, 120), type: String(a.type || ''), content: Buffer.from(String(a.data || ''), 'base64') }));
+      if (attachments.reduce((n, a) => n + a.content.length, 0) > 24 * 1024 * 1024) return send(400, { ok: false, error: 'The attachments are over 24 MB together; Gmail takes up to 25 MB.' });
+      const ok2 = /^<.+>$/.test(inReplyTo);
+      const msg = { to: to.join(', '), cc: cc.join(', '), subject: String(body.subject || '').slice(0, 300), text, inReplyTo: ok2 ? inReplyTo : '', references: ok2 ? [thread !== inReplyTo && /^<.+>$/.test(thread) ? thread : '', inReplyTo].filter(Boolean).join(' ') : '', attachments };
       try {
         const r = await mail.send(credOf(acc.id), msg);
-        const bug = current.host.hub.recordSent(m0[1], { to: msg.to, toName: String(body.toName || ''), from: acc.address, subject: msg.subject, text, messageId: r.messageId });
+        const files = [];
+        for (const a of attachments) if (a.content.length <= 10 * 1024 * 1024) files.push({ id: await current.host.hub.saveFile(new Uint8Array(a.content), a.name, a.type, 'mail'), name: a.name, type: a.type, size: a.content.length });
+        const bug = current.host.hub.recordSent(m0[1], { to: msg.to, cc: msg.cc, toName: String(body.toName || ''), from: acc.address, subject: msg.subject, text, files, messageId: r.messageId, thread: thread || r.messageId });
         return send(200, { ok: true, id: bug?.id, from: acc.address });
       } catch (e) {
         return send(502, { ok: false, error: e.message });
@@ -582,12 +609,12 @@ export async function startServer({ root, dataDir, seal, unseal, port = 0, key: 
   };
 }
 
-async function readJson(req) {
+async function readJson(req, limit = 64 * 1024) {
   const parts = [];
   let size = 0;
   for await (const c of req) {
     size += c.length;
-    if (size > 64 * 1024) break;
+    if (size > limit) break;
     parts.push(c);
   }
   try {
