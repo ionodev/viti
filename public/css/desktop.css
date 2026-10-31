@@ -310,11 +310,9 @@ kbd { background: var(--panel-2); border: 1px solid var(--border-2); border-bott
 .ps-track { position: relative; flex: 1 1 auto; min-width: 60px; height: 16px; margin: 0 7px; }
 .ps-line, .ps-fill { position: absolute; left: 0; top: 50%; height: 2px; margin-top: -1px; border-radius: 2px; }
 .ps-line { right: 0; background: var(--border); }
-.ps-fill { width: 0; background: var(--lvl); transition: width .28s cubic-bezier(.3, .7, .3, 1), background-color .28s; }
+.ps-fill { width: 0; background: var(--lvl); transition: width .3s cubic-bezier(.25, .8, .35, 1), background-color .3s; }
 .ps-notch { position: absolute; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: var(--border-2); transition: background-color .28s; }
-.ps-thumb { position: absolute; top: 50%; left: 0; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: var(--lvl); border: 2px solid var(--panel); box-shadow: 0 0 0 1px var(--lvl), 0 1px 3px rgba(0, 0, 0, .25); transition: left .28s cubic-bezier(.3, .7, .3, 1.25), background-color .28s, box-shadow .28s; }
-.ps-thumb.pop { animation: ps-pop .32s ease-out; }
-@keyframes ps-pop { 40% { transform: scale(1.35); } 100% { transform: scale(1); } }
+.ps-thumb { position: absolute; top: 50%; left: 0; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: var(--lvl); border: 2px solid var(--panel); box-shadow: 0 0 0 1px var(--lvl), 0 1px 3px rgba(0, 0, 0, .25); transition: left .3s cubic-bezier(.25, .8, .35, 1), background-color .3s, box-shadow .3s; }
 .prio-slide:hover .ps-thumb { box-shadow: 0 0 0 1px var(--lvl), 0 0 0 5px color-mix(in srgb, var(--lvl) 18%, transparent); }
 .prio-name { flex: none; width: 70px; font: 600 12px var(--font); color: var(--lvl); white-space: nowrap; transition: color .28s; }
-body.noanim .ps-thumb, body.noanim .ps-fill { transition: none; animation: none; }
+body.noanim .ps-thumb, body.noanim .ps-fill { transition: none; }

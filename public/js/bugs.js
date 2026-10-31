@@ -638,7 +638,7 @@ export class Bugs {
     this.cols.open.insertBefore(h('div', { class: 'todo-form' }, this.input, this.shotBox, h('div', { class: 'add-opts' }, this.addPrio.el, this.addBranch)), this.bodies.open);
   }
   // the priority of a new one: a slider with four notches (none, low, medium, high). The handle glides to
-  // the notch (click one, drag, or use the arrow keys) and takes the level's colour.
+  // the notch (click one, drag, or use the arrow keys), easing to a stop, and takes the level's colour.
   prioSlider() {
     const LEVELS = ['', 'low', 'medium', 'high'];
     let at = 0;
@@ -648,14 +648,8 @@ export class Bugs {
     const name = h('span', { class: 'prio-name' });
     const el = h('div', { class: 'prio-slide', role: 'slider', tabindex: '0', 'aria-label': 'Priority', 'aria-valuemin': '0', 'aria-valuemax': '3', title: 'The priority (a deadline comes with it, as set in Settings)' }, track, name);
     const set = (i) => {
-      i = Math.max(0, Math.min(3, i));
-      if (i !== at) {
-        // a little bump when it lands on a new notch
-        thumb.classList.remove('pop');
-        void thumb.offsetWidth;
-        thumb.classList.add('pop');
-      }
-      at = i;
+      at = Math.max(0, Math.min(3, i));
+      i = at;
       const k = LEVELS[i];
       thumb.style.left = fill.style.width = `${(i / 3) * 100}%`;
       name.textContent = k ? PRIORITY[k] : 'No priority';
