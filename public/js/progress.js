@@ -1,7 +1,8 @@
 // Progress: a cairn that grows with the work. Every to-do row that is moved to Closed adds one stone on top of the
 // pile, and every stone is a little smaller than the one under it. So the tower never ends: what looks like the
 // smallest stone at the top is a stone you can zoom into, and there are more stones piled on it, and on those.
-// Scroll to zoom (towards the pointer), drag to move, click a stone to open the task it stands for.
+// Scroll to zoom (towards the pointer), drag to move, click a stone to see the tower from it, double-click it to
+// open the task it stands for.
 //
 // The picture is drawn relative to an "anchor" stone near the middle of the view, and the anchor is passed up or
 // down the tower as you zoom, so there is no limit to how far in you can go.
@@ -81,7 +82,7 @@ export class Progress {
     this.help = h(
       'div',
       { class: 'cairn-help' },
-      infoButton('Scroll to zoom, drag to move. Every finished to-do or report is a stone, each smaller than the one below. Click a stone to open the task it stands for.', 'up-right'),
+      infoButton('Scroll to zoom, drag to move. Every finished to-do or report is a stone, each smaller than the one below. Click a stone to see the tower from it; double-click it to open the task it stands for.', 'up-right'),
       this.zoomLabel,
       h('button', { class: 'cairn-reset', onclick: () => this.fit() }, 'Bottom'),
       h('button', { class: 'cairn-reset', title: 'Zoom to the newest stone on top', onclick: () => this.toTop() }, 'Top'),
@@ -343,6 +344,33 @@ export class Progress {
     const t = this.tasks[i];
     if (t) this.open?.({ k: 'bug', bug: t.id, section: t.section });
   }
+  // click: the view glides and zooms until that stone stands at the bottom, as wide as the first one was, with
+  // the rest of the tower rising from it
+  dive(px, py) {
+    const best = this.stoneAt(px, py);
+    if (!best) return;
+    const v = this.view;
+    // the view becomes the default view, but with the clicked stone as the bottom one: the same framing and the same
+    // height of tower above it, so it looks just like the start of the tower (only the stone is a smaller one)
+    const wUnit = Math.pow(R, best.k); // the clicked stone's width in the anchor's units
+    const f = this.frame();
+    const to = { x: 0, y: yAt(best.k) + f.y * wUnit, s: f.s / wUnit };
+    const from = { x: v.x, y: v.y, s: v.s };
+    const t0 = performance.now();
+    cancelAnimationFrame(this.flight);
+    const step = (now) => {
+      const t = Math.min(1, (now - t0) / 500);
+      const e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+      // (the anchor stays put during the flight; it is passed on when the flight is over)
+      v.x = from.x + (to.x - from.x) * e;
+      v.y = from.y + (to.y - from.y) * e;
+      v.s = Math.exp(Math.log(from.s) + (Math.log(to.s) - Math.log(from.s)) * e);
+      if (t >= 1) this.normalize();
+      this.draw();
+      if (t < 1) this.flight = requestAnimationFrame(step);
+    };
+    this.flight = requestAnimationFrame(step);
+  }
   wire() {
     const cv = this.canvas;
     cv.addEventListener(
@@ -355,6 +383,12 @@ export class Progress {
       },
       { passive: false },
     );
+    // a double-click on a finished stone: straight to the to-do or report it stands for
+    cv.addEventListener('dblclick', (e) => {
+      const r = cv.getBoundingClientRect();
+      const st = this.stoneAt(e.clientX - r.left, e.clientY - r.top);
+      if (st && st.i < this.N) this.source(st.i);
+    });
     cv.addEventListener('pointerdown', (e) => {
       cancelAnimationFrame(this.flight);
       try {
@@ -374,11 +408,10 @@ export class Progress {
       const up = (ev) => {
         cv.removeEventListener('pointermove', mv);
         cv.removeEventListener('pointerup', up);
-        // a click (not a drag) on a finished stone: straight to the to-do or report it stands for
+        // a click (not a drag) on a stone: look at the tower from that stone
         if (Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 4) {
           const r = cv.getBoundingClientRect();
-          const st = this.stoneAt(ev.clientX - r.left, ev.clientY - r.top);
-          if (st && st.i < this.N) this.source(st.i);
+          this.dive(ev.clientX - r.left, ev.clientY - r.top);
         }
       };
       cv.addEventListener('pointermove', mv);
