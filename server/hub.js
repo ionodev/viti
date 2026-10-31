@@ -697,6 +697,16 @@ export class Hub extends DurableObject {
     return true;
   }
 
+  // an email sent from a mailbox (app/server.js): kept in its Sent (to whom in name and email, from whom in ua)
+  recordSent(section, m) {
+    if (this.section(section)?.kind !== 'mail') return null;
+    const row = this.insertBug({ name: m.toName || m.to, email: m.to, ua: 'from:' + m.from, page: clip('sent:' + (m.messageId || rid(12)), 300), message: m.text, images: [], source: 'sent', ts: Date.now(), section, subject: m.subject });
+    this.run('UPDATE bugs SET seen=1 WHERE id=?', row.id);
+    const bug = this.bugOut({ ...row, seen: 1 });
+    this.bcAll({ t: 'bug', bug });
+    return bug;
+  }
+
   // ------------------------------------------------------------------ images (in chunks: a row holds at most 2 MB)
   async saveImage(bytes, { name = '', w = 0, h = 0 }, by, pdf = false) {
     if (!bytes.length || bytes.length > LIMITS.image) throw new Error('size');

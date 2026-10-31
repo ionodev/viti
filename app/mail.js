@@ -1,9 +1,11 @@
-// Reading mail for a project's mailboxes: one folder (a Gmail label, an Outlook folder) of an email account
-// you connected. Viti only reads; it never sends, moves or deletes anything in your mail.
+// Mail for a project's mailboxes: reading one folder (a Gmail label, an Outlook folder) of an email account you
+// connected, and sending from that account (a reply, or a new email: only when you press Send). Viti never
+// moves or deletes anything in your mail.
 //   Gmail:   IMAP with an app password (Google account → Security → 2-Step Verification → App passwords)
 //   Outlook: Microsoft Graph, after "Sign in with Microsoft" (the device flow, like the GitHub sign-in)
 import { ImapFlow } from 'imapflow';
 import { simpleParser } from 'mailparser';
+import nodemailer from 'nodemailer';
 import { MICROSOFT_CLIENT_ID, MICROSOFT_SCOPE } from './microsoft-app.js';
 
 const FIRST = 200; // the first time a folder is linked, its newest messages come in (not all its history)
@@ -65,6 +67,18 @@ async function gmailFetch(cred, folder, state = {}) {
   });
 }
 
+// sending with Gmail: its outgoing server (SMTP), with the same app password (VITI_SMTP=host:port: a test server)
+const [SMTP_HOST, SMTP_PORT] = (process.env.VITI_SMTP || 'smtp.gmail.com:465').split(':');
+async function gmailSend(cred, msg) {
+  const t = nodemailer.createTransport({ host: SMTP_HOST, port: Number(SMTP_PORT), secure: !process.env.VITI_SMTP, ignoreTLS: !!process.env.VITI_SMTP, auth: { user: cred.address, pass: cred.password.replace(/\s+/g, '') }, connectionTimeout: 20000 });
+  try {
+    const info = await t.sendMail({ from: cred.address, to: msg.to, cc: msg.cc || undefined, subject: msg.subject, text: msg.text, inReplyTo: msg.inReplyTo || undefined, references: msg.references || undefined });
+    return { messageId: info.messageId };
+  } catch (e) {
+    throw new Error(e.responseCode === 535 || /auth/i.test(e.message) ? 'Gmail did not accept the app password for sending. Connect the account again with a new one.' : `Gmail could not send it: ${e.message}`);
+  }
+}
+
 // ------------------------------------------------------------------ Outlook (Microsoft Graph)
 async function msPost(url, params) {
   const r = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded', accept: 'application/json' }, body: new URLSearchParams(params) });
@@ -98,6 +112,24 @@ async function graph(token, path) {
   if (!r.ok) throw new Error(`Outlook answered ${r.status}`);
   return r.json();
 }
+async function graphPost(token, path, body) {
+  const r = await fetch(GRAPH + path, { method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  if (!r.ok) throw new Error(`Outlook could not send it (${r.status}).`);
+}
+// sending with Outlook: a reply to the original when it is in the mailbox (so it threads), or else a new email
+async function outlookSend(cred, msg, keep) {
+  const token = await outlookToken(cred, keep);
+  const people = (s) => String(s || '').split(/[,;]/).map((x) => x.trim()).filter(Boolean).map((address) => ({ emailAddress: { address } }));
+  const message = { subject: msg.subject, body: { contentType: 'Text', content: msg.text }, toRecipients: people(msg.to), ccRecipients: people(msg.cc) };
+  if (msg.inReplyTo) {
+    const found = await graph(token, `/me/messages?$filter=internetMessageId eq '${msg.inReplyTo.replace(/'/g, "''")}'&$select=id&$top=1`).catch(() => null);
+    const id = found?.value?.[0]?.id;
+    if (id) return graphPost(token, `/me/messages/${id}/reply`, { message }).then(() => ({ messageId: '' }));
+  }
+  await graphPost(token, '/me/sendMail', { message, saveToSentItems: true });
+  return { messageId: '' };
+}
+
 export async function outlookFolders(cred, keep) {
   const token = await outlookToken(cred, keep);
   const out = [];
@@ -136,6 +168,8 @@ async function outlookFetch(cred, folder, state = {}, keep) {
 // ------------------------------------------------------------------ either
 export const folders = (account, cred, keep) => (account.provider === 'gmail' ? gmailFolders(cred) : outlookFolders(cred, keep));
 export const fetchNew = (account, cred, folder, state, keep) => (account.provider === 'gmail' ? gmailFetch(cred, folder, state) : outlookFetch(cred, folder, state, keep));
+// msg: { to, cc, subject, text, inReplyTo, references } -> { messageId }
+export const send = (account, cred, msg, keep) => (account.provider === 'gmail' ? gmailSend(cred, msg) : outlookSend(cred, msg, keep));
 
 // A forwarded email (an Outlook rule that forwards, say) comes from whoever forwarded it; the one who
 // wrote it is in the forwarded header in the text. Shown as from them, with their subject, and the text

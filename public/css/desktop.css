@@ -377,3 +377,14 @@ body.noanim .ps-thumb, body.noanim .ps-fill { transition: none; }
 .mail-body { color: var(--text); font-family: var(--font); }
 .mail-none { font-family: var(--font); color: var(--text-3); }
 .mail-back { color: var(--text-2); font-family: var(--font); }
+
+/* writing an email in a mailbox (a reply, or a new one) */
+.mail-compose { display: flex; flex-direction: column; gap: 10px; height: 100%; min-height: 0; }
+.mail-compose h2 { margin: 0 0 4px; font: 650 19px var(--font-display); color: var(--text); }
+.cm-row { display: flex; align-items: center; gap: 10px; margin: 0; }
+.cm-row span { flex: none; width: 58px; font: 600 12.5px var(--font); color: var(--text-3); }
+.cm-input { flex: 1; min-width: 0; padding: 8px 11px; font: 14px var(--font); background: var(--panel); color: var(--text); border: 1px solid var(--border-2); border-radius: 8px; outline: none; }
+.cm-text { flex: 1; min-height: 220px; resize: none; padding: 12px 14px; font: 14.5px/1.6 var(--font); background: var(--panel); color: var(--text); border: 1px solid var(--border-2); border-radius: 10px; outline: none; }
+.cm-input:focus, .cm-text:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.cm-bar { display: flex; gap: 8px; }
+.mail-read:has(.mail-compose) { display: flex; flex-direction: column; }

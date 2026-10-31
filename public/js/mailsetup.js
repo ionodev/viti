@@ -1,5 +1,5 @@
-// Where a mailbox's email comes from: one folder (a Gmail label, an Outlook folder) of an email account you
-// connected. The bar above the mailbox says which (or offers to link one), fetches now on request, and the
+// Where a mailbox's email comes from (and goes out from): one folder (a Gmail label, an Outlook folder) of an
+// email account you connected. The bar above the mailbox says which (or offers to link one), fetches now on request, and the
 // dialogs connect Gmail (an app password) or Outlook (Sign in with Microsoft) and pick the folder.
 // What is linked, and the accounts, are kept by the app on this computer (/app/mail/*, app/mail.js).
 import { h, ago, toast, modal } from './ui.js';
@@ -47,8 +47,8 @@ function working(title, body, label, work) {
   return { done, overlay };
 }
 
-// the bar above a mailbox
-export function sourceBar(section) {
+// the bar above a mailbox (compose: start a new email)
+export function sourceBar(section, { compose } = {}) {
   const bar = h('div', { class: 'mail-source' });
   const draw = async () => {
     let st;
@@ -60,7 +60,7 @@ export function sourceBar(section) {
     const link = st.links[section];
     const acc = link && st.accounts.find((a) => a.id === link.account);
     if (!link || !acc) {
-      bar.replaceChildren(h('span', { class: 'ms-text' }, h('b', {}, 'No email folder linked'), h('small', {}, st.private ? 'Link a Gmail label or Outlook folder, and its mail comes in here.' : 'This repository is public, so Viti does not put email in it.')), st.private ? h('button', { class: 'btn small', onclick: () => link_(section, st).then(draw) }, 'Link a folder') : null);
+      bar.replaceChildren(h('span', { class: 'ms-text' }, h('b', {}, 'No email folder linked'), h('small', {}, st.private ? 'Link a Gmail label or Outlook folder, and its mail comes in here (and you can reply from Viti).' : 'This repository is public, so Viti does not put email in it.')), st.private ? h('button', { class: 'btn small', onclick: () => link_(section, st).then(draw) }, 'Link a folder') : null);
       return;
     }
     const when = link.fetched ? `checked ${ago(link.fetched)}` : 'not checked yet';
@@ -79,6 +79,7 @@ export function sourceBar(section) {
       h('span', { class: 'ms-icon ' + acc.provider }, PROVIDER[acc.provider].charAt(0)),
       h('span', { class: 'ms-text' }, h('b', {}, link.folderName), h('small', { title: link.error || '' }, `${PROVIDER[acc.provider]} · ${acc.address} · `, link.error ? h('span', { class: 'ms-bad' }, 'could not check') : when)),
       fetchNow,
+      compose ? h('button', { class: 'ms-btn', title: 'New email', onclick: compose }, '✎') : null,
       h('button', { class: 'ms-btn', title: 'Link another folder, or unlink', onclick: () => link_(section, st).then(draw) }, '⚙'),
     );
   };
@@ -111,7 +112,7 @@ async function link_(section, st) {
   const body = h(
     'div',
     { class: 'ms-dialog' },
-    h('p', {}, 'Viti reads one folder of your email (a Gmail label or an Outlook folder) into this mailbox, every couple of minutes while Viti is open. It never sends, moves or deletes your mail. What comes in is backed up to the repository with the rest of the project.'),
+    h('p', {}, 'Viti reads one folder of your email (a Gmail label or an Outlook folder) into this mailbox, every couple of minutes while Viti is open, and sends your replies from the same account (only when you press Send). It never moves or deletes your mail. What comes in and goes out is backed up to the repository with the rest of the project.'),
     h('label', {}, 'Account'),
     list,
     h('div', { class: 'ms-connect' }, h('button', { class: 'btn small ghost', type: 'button', onclick: () => add(connectGmail) }, '+ Connect Gmail'), st.outlook ? h('button', { class: 'btn small ghost', type: 'button', onclick: () => add(connectOutlook) }, '+ Connect Outlook') : h('span', { class: 'ms-soon', title: 'Outlook needs Viti registered with Microsoft first' }, 'Outlook: coming soon')),

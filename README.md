@@ -15,7 +15,7 @@ Run `dist/Viti-Setup-0.1.0.exe` (installs for you only, no admin rights), or `di
 
 A repository the sign-in cannot reach can still be connected with a fine-grained token (Contents: Read and write on that repository): "Connect it with a token instead" in the list.
 
-**Mail** (read only): make a **Mailbox** (+ New section, or + New mailbox under MAIL) and link it to one folder of your email: a Gmail label (connect with your address and an app password) or an Outlook folder (Sign in with Microsoft). New mail comes in every couple of minutes while Viti is open. Viti never sends, moves or deletes your mail. Accounts and their passwords stay on this computer, encrypted; the mail that comes in is part of the project (backed up to the repository), so Viti refuses mail in a public repository. Outlook needs Viti's Microsoft registration (`app/microsoft-app.js`).
+**Mail**: make a **Mailbox** (+ New section, or + New mailbox under MAIL) and link it to one folder of your email: a Gmail label (connect with your address and an app password) or an Outlook folder (Sign in with Microsoft). New mail comes in every couple of minutes while Viti is open; forwarded emails show who wrote them. **Reply** (threaded with the original) and **New email** (✎ on the bar) send from the same account, after a last "Send this email?"; what is sent is in the mailbox's **Sent**. Viti never moves or deletes your mail. Accounts and their passwords stay on this computer, encrypted; the mail in a mailbox is part of the project (backed up to the repository), so Viti refuses mail in a public repository. Outlook needs Viti's Microsoft registration (`app/microsoft-app.js`).
 
 ## How it is built
 

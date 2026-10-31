@@ -396,6 +396,32 @@ export async function startServer({ root, dataDir, seal, unseal, port = 0, key: 
         return send(200, { ok: true });
       }
     }
+    // sending from a mailbox, with the account its folder is read from (a reply threads with the original)
+    if ((m0 = p.match(/^\/app\/mail\/send\/([a-z0-9-]+)$/)) && req.method === 'POST' && current) {
+      const link = (cfg.mail.links[current.id] || {})[m0[1]];
+      const acc = link && cfg.mail.accounts.find((a) => a.id === link.account);
+      if (!acc || !credOf(acc.id)) return send(400, { ok: false, error: 'Link this mailbox to an email account first (the bar above the mailbox).' });
+      const addrs = (s) => String(s || '').split(/[,;]/).map((x) => x.trim()).filter(Boolean);
+      const ok = (a) => /^[^\s@<>]+@[^\s@<>]+\.[a-z]{2,}$/i.test(a);
+      const to = addrs(body.to);
+      const cc = addrs(body.cc);
+      if (!to.length || ![...to, ...cc].every(ok)) return send(400, { ok: false, error: 'Check the address (or addresses, with commas between them).' });
+      const text = String(body.text || '').slice(0, 50000);
+      if (!text.trim()) return send(400, { ok: false, error: 'Write something first.' });
+      let inReplyTo = '';
+      if (body.reply) {
+        const orig = current.host.hub.one('SELECT page FROM bugs WHERE id=?', String(body.reply));
+        if (orig?.page?.startsWith('mail:')) inReplyTo = orig.page.slice(5);
+      }
+      const msg = { to: to.join(', '), cc: cc.join(', '), subject: String(body.subject || '').slice(0, 300), text, inReplyTo: /^<.+>$/.test(inReplyTo) ? inReplyTo : '', references: /^<.+>$/.test(inReplyTo) ? inReplyTo : '' };
+      try {
+        const r = await mail.send(acc, credOf(acc.id), msg, keepCred(acc.id));
+        const bug = current.host.hub.recordSent(m0[1], { to: msg.to, toName: String(body.toName || ''), from: acc.address, subject: msg.subject, text, messageId: r.messageId });
+        return send(200, { ok: true, id: bug?.id, from: acc.address });
+      } catch (e) {
+        return send(502, { ok: false, error: e.message });
+      }
+    }
     if ((m0 = p.match(/^\/app\/mail\/fetch\/([a-z0-9-]+)$/)) && req.method === 'POST' && current) {
       const r = await fetchMail(m0[1]);
       return send(200, { ok: true, ...(r[m0[1]] || { added: 0, error: fetching ? 'Already fetching: try again in a moment.' : '' }) });
