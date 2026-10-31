@@ -1,0 +1,24 @@
+{
+  "name": "viti-desktop",
+  "productName": "Viti",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Viti: a project page for any GitHub repository (boards, chat, to-dos, reports), as a Windows app",
+  "main": "app/main.js",
+  "type": "module",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win"
+  },
+  "devDependencies": {
+    "electron": "^38.8.6",
+    "electron-builder": "^26.18.0"
+  },
+  "dependencies": {
+    "ws": "^8.22.1"
+  },
+  "allowScripts": {
+    "electron@38.8.6": true,
+    "electron-winstaller@5.4.0": true
+  }
+}

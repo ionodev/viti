@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Viti</title>
+<link rel="icon" href="/favicon.png">
+<link rel="stylesheet" href="/css/app.css">
+<link rel="stylesheet" href="/vendor/katex.css">
+</head>
+<body class="loading">
+<header id="topbar">
+  <button id="menu-btn" class="icon" title="Show or hide the section menu">&#9776;</button>
+  <div class="titles"><p class="label" id="kind">Board</p><h1 id="title"></h1></div>
+  <a class="brand" href="#/">
+    <span class="disc"><img src="/img/logo-192.png" alt=""></span>
+    <span class="brand-name">VITI</span>
+  </a>
+</header>
+<aside id="sidebar">
+  <button id="search-btn" class="side-search" title="Search everything (Ctrl+K)"><span>Search…</span><kbd>Ctrl K</kbd></button>
+  <div class="branchbar" title="Which branch of the game you are looking at: its page in each board, and its reports"><label for="branch-view">Branch</label><select id="branch-view"></select></div>
+  <div id="projectcat"></div>
+  <p class="label">Sections</p>
+  <nav id="sections"></nav>
+  <div class="side-tools"><button id="add-section" class="link">+ New section</button></div>
+  <p class="label">Reports</p>
+  <nav id="special"></nav>
+  <div class="side-tools"><button id="add-report" class="link">+ New section</button></div>
+  <div id="custom"></div>
+  <div class="side-tools"><button id="add-category" class="link">+ New category</button></div>
+  <div class="side-foot">
+    <button id="me" class="me" title="Change your name"></button>
+    <button id="settings" class="me" title="Settings">&#9881; Settings</button>
+    <button id="keys-btn" class="me" title="Keyboard shortcuts (?)">&#9000; Shortcuts</button>
+    <button id="sync" class="sync" title="GitHub backup"></button>
+  </div>
+</aside>
+
+<main id="main">
+  <header class="titlebar">
+    <div id="here" class="here"></div>
+    <span id="conn" class="conn" hidden title="The connection to Viti was lost. What you do is kept and sent when it is back.">Offline · reconnecting…</span>
+    <button id="chat-btn" class="btn small" title="Show or hide the chat">Chat <span id="chat-badge" class="badge" hidden></span></button>
+  </header>
+  <div id="stage" class="stage"></div>
+</main>
+
+<aside id="chat"></aside>
+<div id="scrim"></div>
+
+<div id="quote-pop" class="quote-pop" hidden><button id="quote-btn">Quote in chat</button></div>
+<div id="toasts"></div>
+<div id="fatal" class="fatal" hidden></div>
+<script type="module" src="/js/main.js"></script>
+</body>
+</html>
