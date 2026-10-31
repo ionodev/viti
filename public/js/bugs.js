@@ -634,8 +634,32 @@ export class Bugs {
     // the branch a new one is about (the latest by default) and its priority (none by default)
     await loadBranches();
     this.addBranch = S.branches.list.length ? this.branchSelect() : null;
-    this.addPrio = h('select', { class: 'branch-select prio-select', title: 'The priority (a deadline comes with it, as set in Settings)' }, h('option', { value: '' }, 'No priority'), Object.entries(PRIORITY).map(([k, label]) => h('option', { value: k }, label)));
-    this.cols.open.insertBefore(h('div', { class: 'todo-form' }, this.input, this.shotBox, h('div', { class: 'add-opts' }, this.addPrio, this.addBranch)), this.bodies.open);
+    this.addPrio = this.prioSlider();
+    this.cols.open.insertBefore(h('div', { class: 'todo-form' }, this.input, this.shotBox, h('div', { class: 'add-opts' }, this.addPrio.el, this.addBranch)), this.bodies.open);
+  }
+  // the priority of a new one: a slider with four notches (none, low, medium, high), in the level's colour
+  prioSlider() {
+    const LEVELS = ['', 'low', 'medium', 'high'];
+    const range = h('input', { type: 'range', class: 'prio-range', min: '0', max: '3', step: '1', value: '0', 'aria-label': 'Priority' });
+    const name = h('span', { class: 'prio-name' });
+    const el = h('label', { class: 'prio-slide', title: 'The priority (a deadline comes with it, as set in Settings)' }, range, name);
+    const paint = () => {
+      const k = LEVELS[range.value];
+      name.textContent = k ? PRIORITY[k] : 'No priority';
+      el.dataset.level = k || 'none';
+    };
+    range.addEventListener('input', paint);
+    paint();
+    return {
+      el,
+      get value() {
+        return LEVELS[range.value];
+      },
+      set value(v) {
+        range.value = String(Math.max(0, LEVELS.indexOf(v)));
+        paint();
+      },
+    };
   }
   drawShots() {
     this.shotBox.hidden = !this.pending.length;

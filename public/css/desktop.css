@@ -300,3 +300,14 @@ kbd { background: var(--panel-2); border: 1px solid var(--border-2); border-bott
 .add-shot img { display: block; width: 64px; height: 48px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border); }
 .add-shot button { position: absolute; top: -6px; right: -6px; width: 18px; height: 18px; padding: 0; border-radius: 50%; border: 1px solid var(--border-2); background: var(--panel); color: var(--text-2); font-size: 12px; line-height: 1; }
 .add-shot button:hover { background: var(--danger); border-color: var(--danger); color: #fff; }
+
+/* the priority slider in the add box: four notches, coloured by the level */
+.prio-slide { --lvl: var(--text-3); flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 4px 10px; border: 1px solid var(--border-2); border-radius: 8px; background: var(--panel); cursor: pointer; }
+.prio-slide[data-level='low'] { --lvl: var(--green); }
+.prio-slide[data-level='medium'] { --lvl: var(--amber); }
+.prio-slide[data-level='high'] { --lvl: var(--red); }
+.prio-range { flex: 1 1 auto; min-width: 50px; margin: 0; height: 18px; -webkit-appearance: none; appearance: none; cursor: pointer; background:
+  radial-gradient(circle, var(--border-2) 3px, transparent 3.5px) 0% 50% / 14px 14px no-repeat, radial-gradient(circle, var(--border-2) 3px, transparent 3.5px) 33.333% 50% / 14px 14px no-repeat, radial-gradient(circle, var(--border-2) 3px, transparent 3.5px) 66.667% 50% / 14px 14px no-repeat, radial-gradient(circle, var(--border-2) 3px, transparent 3.5px) 100% 50% / 14px 14px no-repeat,
+  linear-gradient(var(--border), var(--border)) center / calc(100% - 14px) 2px no-repeat; }
+.prio-range::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--lvl); border: 2px solid var(--panel); box-shadow: 0 0 0 1px var(--lvl); }
+.prio-name { flex: none; width: 70px; font: 600 12px var(--font); color: var(--lvl); white-space: nowrap; }
