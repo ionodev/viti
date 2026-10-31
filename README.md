@@ -1,43 +1,63 @@
-# Viti for Windows
+# Viti
 
-A project page for any GitHub repository: boards (post-its, text, images, drawings, notes with LaTeX, PDFs), a chat for every section, a to-do list, report lists, a calendar, an overview of what refers to what, and a progress cairn that grows a stone for everything finished. It is the desktop version of the team's web Viti (`vardengames_dev`), made general: connect any repository you can write to.
+**A shared workspace for your project on GitHub.** Pick a repository and Viti gives it boards to think on, a chat, a to-do list, bug reports, a calendar and a mailbox, all in one window. Everything you add is backed up to the repository itself, so it stays with your project.
 
-- **Home screen:** your projects (repositories). Connect one, open it, give it a new token, or remove it.
-- **Branches:** the repository's branches tag to-dos and reports, and each board can have a page per branch.
-- **Backup:** everything is backed up to a branch of the repository of its own, `viti-data` (an orphan branch; your code is never touched). Opening a project on a new computer fetches it from there.
-- **Look:** light, dark or as Windows is set, and any accent colour (Settings, or Appearance on the home screen).
+Viti is a Windows app. It is free and open source.
 
-## Using it
+## Getting started
 
-Run `dist/Viti-Setup-0.1.0.exe` (installs for you only, no admin rights), or `dist/Viti-0.1.0-portable.exe` (runs as it is). The builds are not code-signed yet, so Windows SmartScreen asks once: **More info → Run anyway**.
+1. **Download** the latest version from the [Releases](https://github.com/ionodev/viti/releases) page: the installer (`Viti-Setup-….exe`), or the portable version that runs without installing.
+2. **Open it.** Windows may say *"Windows protected your PC"* the first time, because the app is not signed with a paid certificate. Click **More info → Run anyway**.
+3. **Sign in with GitHub.** Viti shows a short code and opens GitHub in your browser. Enter the code there and approve Viti.
+4. **Pick a repository** from the list of the ones you can write to. That's your first project.
 
-**Sign in with GitHub** (top right, or when you connect a repository): Viti shows a short code and opens GitHub; enter it there and approve, and Viti lists the repositories you can write to. Pick one. The sign-in is kept encrypted with Windows' protection for your user, in `%APPDATA%\Viti`, and only ever sent to GitHub. It is Viti's OAuth App (`app/github-app.js`, device flow, no secret); an organisation that restricts third-party apps has to approve it once (Organisation settings → Third-party access).
+You can add as many projects as you like, and switch between them on the home screen.
 
-A repository the sign-in cannot reach can still be connected with a fine-grained token (Contents: Read and write on that repository): "Connect it with a token instead" in the list.
+## What you can do
 
-**Mail** (Gmail): make a **Mailbox** (+ New section, or + New mailbox under MAIL) and link it to a Gmail label, with your address and an app password (Google account → Security → 2-Step Verification → App passwords). New mail comes in every couple of minutes while Viti is open; forwarded emails show who wrote them; what you send yourself goes to **Sent**. **Reply** (threaded with the original) and **New email** (✎ on the bar) send from the same account, after a last "Send this email?". Viti never moves or deletes your mail. Accounts and their app passwords stay on this computer, encrypted; the mail in a mailbox is part of the project (backed up to the repository), so Viti refuses mail in a public repository.
+- **Boards.** An endless canvas for each section: sticky notes, text, images, drawings, highlighted words, groups, and notes with headings and equations. Drag, zoom and arrange things as you think.
+- **Chat.** Every section has its own chat. Quote a piece of text from a board, or point to a note, a task or a message, and it links straight to it. Write *@name* to get someone's attention.
+- **To do.** Write a task and press Enter. Give it a priority (and with it a deadline), tag it with a branch of your repository, and tick it off when it's done.
+- **Reports.** Lists for bugs or anything else you collect, with screenshots. Open, Closed and Trash, side by side.
+- **Calendar.** Deadlines show up by themselves, and you can label any day and point it at anything in the project.
+- **Progress.** Every finished task adds a stone to a cairn that keeps growing. Click a stone to go back to the task it stands for.
+- **Overview.** A map of what refers to what across the project.
+- **Mail.** Link a mailbox to a Gmail label and the emails in it come into Viti, where the whole project can read them. Reply or write new emails right from Viti.
+- **Search everything** with **Ctrl+K**, and press **?** to see all keyboard shortcuts.
+- **Make it yours.** Light or dark, and any accent colour you like (Settings, or *Appearance* on the home screen).
 
-## How it is built
+## Your data
 
-- `app/main.js`: the Electron window. Starts the local server, gives the window its key, keeps tokens encrypted (safeStorage). F5 reloads, F12 opens the developer tools, Ctrl + / Ctrl − zoom.
-- `app/server.js`: the app's server, on 127.0.0.1 only (port 47821, or another if that is taken). The home screen's API (`/app/*`), the open project's pages (`public/`), API and live connection (`/api/*`). Every `/app` and `/api` request needs the window's key (a cookie set at start), so no other program or web page can use it.
-- `app/ui/`: the home screen.
-- `server/`: Viti's server, from the web version. `hub.js` is the Durable Object that holds a project; `do-shim.js` gives it what Cloudflare would (node:sqlite with the same API, transactions, the backup's timer, the live connections); `host.js` bridges Node's HTTP server and WebSockets to it. One SQLite file per project in `%APPDATA%\Viti\projects\<id>`.
-- `public/`: the pages, from the web version. `css/tokens.css` (the colours of both themes and the accent), `css/app.css` (the layout), `css/desktop.css` (the look), `theme.js` (puts the theme on the page before it draws).
+- **On your computer:** each project is kept in your Windows user folder, so Viti is fast and works offline too.
+- **On GitHub:** everything is also backed up to your repository, in a branch of its own called `viti-data`. Your code and your other branches are never touched. Opening the project on another computer brings it all back.
+- **Your sign-ins** (GitHub, and the Gmail app password) stay on your computer, encrypted, and are only ever sent to GitHub and Google.
+- **Mail and public repositories:** because everything in a project is backed up to the repository, Viti does not let you link a mailbox in a public repository, where anyone could read it.
 
-## Working on it
+## Mail with Gmail
 
-```bash
+1. Turn on 2-Step Verification in your Google account, then create an **app password** (Google account › Security › App passwords). Call it "Viti".
+2. In Gmail, make a **label** (for example *Viti*) and a filter that puts the right emails in it.
+3. In Viti, add a **Mailbox** to your project, click **Link a label**, connect your Gmail with the app password, and pick the label.
+
+New mail comes in every couple of minutes while Viti is open. Emails you send yourself appear under **Sent**. Viti never moves or deletes anything in your Gmail.
+
+## Good to know
+
+- **Working together:** several people can use the same project, but for now not at the same time. Each computer keeps its own copy and backs it up, and the last one to back up wins. Live syncing between computers is on its way.
+- **Organisations on GitHub** may have to approve Viti once before their repositories show up (organisation settings › Third-party access).
+
+## Problems and ideas
+
+Something not working, or an idea for Viti? Open an [issue](https://github.com/ionodev/viti/issues).
+
+## Building it yourself
+
+Viti is an Electron app. With [Node.js](https://nodejs.org) installed:
+
+```
 npm install
-npm start          # the app
-npm run dev        # the server alone: http://127.0.0.1:8795/dev-login in a browser
-npm run dist       # dist/Viti-Setup-<version>.exe and dist/Viti-<version>-portable.exe
+npm start
+npm run dist
 ```
 
-npm 11 asks before running packages' install scripts: `npm approve-scripts electron electron-winstaller` (Electron's downloads the program itself).
-
-## Not there yet
-
-- **Working together live.** Each computer has its own copy and backs it up to `viti-data`; it does not yet take in what others back up while it is open (a new computer gets everything when it first opens the project). Until two-way sync is in, one person per project (or taking turns) is safe; two people writing at once would overwrite each other's backup.
-- **Code signing**, so SmartScreen does not ask.
-- **Updates** inside the app (for now: install the new version over the old one; your projects are kept).
+`npm start` runs it, and `npm run dist` makes the Windows installer and portable version in `dist/`.
