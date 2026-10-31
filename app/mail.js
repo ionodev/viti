@@ -58,7 +58,7 @@ async function gmailFetch(cred, folder, state = {}) {
         lastUid = Math.max(lastUid, m.uid);
         const p = await simpleParser(m.source);
         const from = p.from?.value?.[0] || {};
-        out.push({ ref: p.messageId || `gmail:${folder}:${box.uidValidity}:${m.uid}`, name: from.name || '', email: from.address || '', subject: p.subject || '', text: (p.text || '').trim() || htmlToText(p.html || ''), ts: (p.date || m.internalDate || new Date()).getTime() });
+        out.push(unforward({ ref: p.messageId || `gmail:${folder}:${box.uidValidity}:${m.uid}`, name: from.name || '', email: from.address || '', subject: p.subject || '', text: (p.text || '').trim() || htmlToText(p.html || ''), ts: (p.date || m.internalDate || new Date()).getTime() }));
       }
     }
     return { state: { uidValidity: String(box.uidValidity), lastUid }, messages: out };
@@ -128,7 +128,7 @@ async function outlookFetch(cred, folder, state = {}, keep) {
       url = page['@odata.nextLink'];
     }
   }
-  const messages = rows.map((m) => ({ ref: m.internetMessageId || `outlook:${m.id}`, name: m.from?.emailAddress?.name || '', email: m.from?.emailAddress?.address || '', subject: m.subject || '', text: (m.body?.content || '').trim(), ts: Date.parse(m.receivedDateTime) || Date.now() }));
+  const messages = rows.map((m) => unforward({ ref: m.internetMessageId || `outlook:${m.id}`, name: m.from?.emailAddress?.name || '', email: m.from?.emailAddress?.address || '', subject: m.subject || '', text: (m.body?.content || '').trim(), ts: Date.parse(m.receivedDateTime) || Date.now() }));
   const since = rows.length ? rows[rows.length - 1].receivedDateTime : state.since || new Date().toISOString();
   return { state: { since }, messages };
 }
@@ -136,6 +136,25 @@ async function outlookFetch(cred, folder, state = {}, keep) {
 // ------------------------------------------------------------------ either
 export const folders = (account, cred, keep) => (account.provider === 'gmail' ? gmailFolders(cred) : outlookFolders(cred, keep));
 export const fetchNew = (account, cred, folder, state, keep) => (account.provider === 'gmail' ? gmailFetch(cred, folder, state) : outlookFetch(cred, folder, state, keep));
+
+// A forwarded email (an Outlook rule that forwards, say) comes from whoever forwarded it; the one who
+// wrote it is in the forwarded header in the text. Shown as from them, with their subject, and the text
+// without that header. Outlook (English, Norwegian) and Gmail write that header.
+const FWD = /^\s*(?:(?:fw|fwd|vs|wg|tr|rv)\s*:\s*)+/i;
+const HEADER = /(?:^|\n)[ \t>*]*(?:From|Fra|Von|De)[ \t*]*:[ \t*]*([^\n]+)\n([\s\S]{0,600}?)\n[ \t>*]*(?:Subject|Emne|Betreff|Objet)[ \t*]*:[ \t*]*([^\n]*)\n/i;
+const MORE = /^(?:[ \t>*]*(?:To|Til|Cc|Kopi|Date|Dato|Sent|Sendt)[ \t*]*:[^\n]*\n)+/i;
+export function unforward(m) {
+  if (!FWD.test(m.subject || '')) return m;
+  const t = String(m.text || '').replace(/\r\n/g, '\n');
+  const h = t.match(HEADER);
+  if (!h) return { ...m, subject: m.subject.replace(FWD, '') };
+  const who = h[1].trim();
+  const at = who.match(/<([^>\s]+@[^>\s]+)>|\[mailto:([^\]\s]+)\]|([^\s<>"'()\[\]]+@[^\s<>"'()\[\]]+)/);
+  const email = (at && (at[1] || at[2] || at[3])) || m.email;
+  const name = who.replace(/<[^>]*>|\[mailto:[^\]]*\]/g, '').replace(/["']/g, '').trim();
+  const body = t.slice(h.index + h[0].length).replace(MORE, '').trim();
+  return { ...m, name: name && name !== email ? name : '', email, subject: h[3].trim() || m.subject.replace(FWD, ''), text: body || t };
+}
 
 // an HTML-only email as plain text
 function htmlToText(html) {
