@@ -4,7 +4,7 @@
 // drag a node to move it, drag the background to pan, scroll to zoom, hover to see what is connected.
 import { S, imageUrl, sectionById, sectionLabel } from './state.js';
 import { api } from './api.js';
-import { h, toast } from './ui.js';
+import { h, toast, infoButton } from './ui.js';
 
 const NS = 'http://www.w3.org/2000/svg';
 const el = (tag, attrs = {}, ...kids) => {
@@ -40,7 +40,7 @@ export class Overview {
     this.legend = h('div', { class: 'graph-legend' });
     this.note = h('div', { class: 'graph-empty', hidden: true }, 'Nothing is connected yet.\nIn the chat, quote some text or reference an item, report or message and it shows up here.');
     this.note.style.whiteSpace = 'pre-line';
-    this.root = h('div', { class: 'overview' }, this.svg, this.legend, this.note, h('div', { class: 'graph-help' }, 'Click a node to open it · drag to move · scroll to zoom · drag the background to pan'));
+    this.root = h('div', { class: 'overview' }, this.svg, this.legend, this.note, h('div', { class: 'graph-help' }, infoButton('Everything that is quoted or referenced in a chat, and what it points at. Click a node to open it, drag a node to move it, scroll to zoom, drag the background to pan.', 'up-right')));
     stage.append(this.root);
     this.wire();
     await this.load(true);

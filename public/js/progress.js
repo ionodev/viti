@@ -1,12 +1,12 @@
 // Progress: a cairn that grows with the work. Every to-do row that is moved to Closed adds one stone on top of the
 // pile, and every stone is a little smaller than the one under it. So the tower never ends: what looks like the
 // smallest stone at the top is a stone you can zoom into, and there are more stones piled on it, and on those.
-// Scroll to zoom (towards the pointer), drag to move, double-click a stone to dive into it.
+// Scroll to zoom (towards the pointer), drag to move, click a stone to open the task it stands for.
 //
 // The picture is drawn relative to an "anchor" stone near the middle of the view, and the anchor is passed up or
 // down the tower as you zoom, so there is no limit to how far in you can go.
 import { api } from './api.js';
-import { h, ago, stamp, toast } from './ui.js';
+import { h, ago, stamp, toast, infoButton } from './ui.js';
 
 const R = 0.8; // each stone is this much of the width of the one below
 const ASP = 0.56; // how tall a stone is compared to its width
@@ -76,18 +76,17 @@ export class Progress {
     this.count = h('div', { class: 'cairn-count' });
     this.zoomLabel = h('span', {});
     this.tip = h('div', { class: 'cairn-tip', hidden: true });
-    this.card = h('div', { class: 'cairn-card', hidden: true });
     this.empty = h('div', { class: 'cairn-empty', hidden: true }, 'Nothing finished yet.\nClose a to-do row or a report and the first stone appears.');
     this.empty.style.whiteSpace = 'pre-line';
     this.help = h(
       'div',
       { class: 'cairn-help' },
-      h('span', {}, 'Scroll to zoom · drag to move · click a stone to see the tower from it (and the way to what it was), double-click to go straight there · '),
+      infoButton('Scroll to zoom, drag to move. Every finished to-do or report is a stone, each smaller than the one below. Click a stone to open the task it stands for.', 'up-right'),
       this.zoomLabel,
       h('button', { class: 'cairn-reset', onclick: () => this.fit() }, 'Bottom'),
       h('button', { class: 'cairn-reset', title: 'Zoom to the newest stone on top', onclick: () => this.toTop() }, 'Top'),
     );
-    this.root_ = h('div', { class: 'progress' }, this.canvas, this.count, this.empty, this.tip, this.card, this.help);
+    this.root_ = h('div', { class: 'progress' }, this.canvas, this.count, this.empty, this.tip, this.help);
     stage.append(this.root_);
     this.ctx = this.canvas.getContext('2d');
     this.size();
@@ -328,11 +327,11 @@ export class Progress {
   }
 
   // ------------------------------------------------------------------ the pointer
-  // click: the stone under the pointer becomes the base: the view glides and zooms until that stone stands at the bottom,
-  // as wide as the first one was, with the rest of the tower rising from it
+  // the finished stone under the pointer (the smallest, when they overlap; never the outline of the next one)
   stoneAt(px, py) {
     let best = null;
     for (const st of this.stones) {
+      if (st.i >= this.N) continue;
       const dx = (px - st.x) / (st.sw / 2);
       const dy = (py - st.y) / (st.sh / 2);
       if (dx * dx + dy * dy <= 1 && (!best || st.sw < best.sw)) best = st;
@@ -343,41 +342,6 @@ export class Progress {
   source(i) {
     const t = this.tasks[i];
     if (t) this.open?.({ k: 'bug', bug: t.id, section: t.section });
-  }
-  // a card beside the clicked stone: what it was, and the way to it
-  showCard(i, px, py) {
-    const t = this.tasks[i];
-    if (!t) return (this.card.hidden = true);
-    this.card.replaceChildren(h('b', {}, t.text.length > 200 ? t.text.slice(0, 199) + '…' : t.text), h('span', {}, `Stone ${i + 1} · by ${t.name} · closed ${ago(t.ts)}`), h('button', { class: 'btn small', onclick: () => this.source(i) }, `Open in ${t.where || 'the list'} \u2192`));
-    this.card.style.left = Math.max(8, Math.min(this.W - 280, px + 16)) + 'px';
-    this.card.style.top = Math.max(8, Math.min(this.H - 140, py - 20)) + 'px';
-    this.card.hidden = false;
-  }
-  dive(px, py) {
-    const best = this.stoneAt(px, py);
-    if (!best) return;
-    if (best.i < this.N) this.showCard(best.i, px, py);
-    const v = this.view;
-    // the view becomes the default view, but with the clicked stone as the bottom one: the same framing and the same
-    // height of tower above it, so it looks just like the start of the tower (only the stone is a smaller one)
-    const wUnit = Math.pow(R, best.k); // the clicked stone's width in the anchor's units
-    const f = this.frame();
-    const to = { x: 0, y: yAt(best.k) + f.y * wUnit, s: f.s / wUnit };
-    const from = { x: v.x, y: v.y, s: v.s };
-    const t0 = performance.now();
-    cancelAnimationFrame(this.flight);
-    const step = (now) => {
-      const t = Math.min(1, (now - t0) / 500);
-      const e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-      // (the anchor stays put during the flight; it is passed on when the flight is over)
-      v.x = from.x + (to.x - from.x) * e;
-      v.y = from.y + (to.y - from.y) * e;
-      v.s = Math.exp(Math.log(from.s) + (Math.log(to.s) - Math.log(from.s)) * e);
-      if (t >= 1) this.normalize();
-      this.draw();
-      if (t < 1) this.flight = requestAnimationFrame(step);
-    };
-    this.flight = requestAnimationFrame(step);
   }
   wire() {
     const cv = this.canvas;
@@ -391,13 +355,7 @@ export class Progress {
       },
       { passive: false },
     );
-    cv.addEventListener('dblclick', (e) => {
-      const r = cv.getBoundingClientRect();
-      const st = this.stoneAt(e.clientX - r.left, e.clientY - r.top);
-      if (st && st.i < this.N) this.source(st.i);
-    });
     cv.addEventListener('pointerdown', (e) => {
-      this.card.hidden = true;
       cancelAnimationFrame(this.flight);
       try {
         cv.setPointerCapture(e.pointerId);
@@ -416,10 +374,11 @@ export class Progress {
       const up = (ev) => {
         cv.removeEventListener('pointermove', mv);
         cv.removeEventListener('pointerup', up);
-        // a click (not a drag) on a stone: look at the tower from that stone
+        // a click (not a drag) on a finished stone: straight to the to-do or report it stands for
         if (Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 4) {
           const r = cv.getBoundingClientRect();
-          this.dive(ev.clientX - r.left, ev.clientY - r.top);
+          const st = this.stoneAt(ev.clientX - r.left, ev.clientY - r.top);
+          if (st && st.i < this.N) this.source(st.i);
         }
       };
       cv.addEventListener('pointermove', mv);
@@ -445,8 +404,8 @@ export class Progress {
         this.hover = id;
         this.schedule();
       }
-      this.tip.hidden = !hit || !this.card.hidden;
-      if (hit && this.card.hidden) {
+      this.tip.hidden = !hit;
+      if (hit) {
         const t = this.tasks[hit.i];
         this.tip.replaceChildren(h('b', {}, t.text.length > 160 ? t.text.slice(0, 159) + '…' : t.text), h('span', {}, `Stone ${hit.i + 1} · ${t.where ? t.where + ' · ' : ''}by ${t.name} · closed ${ago(t.ts)}`), h('small', {}, stamp(t.ts)));
         this.tip.style.left = `${Math.min(this.W - 260, px + 14)}px`;

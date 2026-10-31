@@ -50,7 +50,7 @@ export class Bugs {
     for (const c of COLS) {
       const n = h('span', { class: 'n' });
       const body = h('div', { class: 'col-body' });
-      const col = h('section', { class: 'col', dataset: { key: c.key } }, h('div', { class: 'col-head', onclick: () => col.classList.contains('folded') && this.toggle(c.key), title: '' }, h('h3', {}, c.title), n, (this.ordBtn[c.key] = h('button', { class: 'ord', title: 'Click to switch between oldest first and newest first', onclick: () => this.flipOrder(c.key) }))), body);
+      const col = h('section', { class: 'col', dataset: { key: c.key } }, h('div', { class: 'col-head' }, h('h3', {}, c.title), n, (this.ordBtn[c.key] = h('button', { class: 'ord', title: 'Click to switch between oldest first and newest first', onclick: () => this.flipOrder(c.key) }))), body);
       col.addEventListener('dragover', (e) => {
         e.preventDefault();
         col.classList.add('over');
@@ -67,15 +67,20 @@ export class Bugs {
       this.root.append(col);
     }
     this.add = h('button', { class: 'btn bugbar', onclick: () => this.newReport() }, '+ New report');
-    // which lists are open: any one, two or all three (remembered); the others fold into a narrow strip
-    // (click it to open). Trash starts folded.
-    let shown = ['open', 'closed'];
+    // which lists are shown: any one, two or all three (remembered); a hidden one takes no room at all
+    let shown = ['open', 'closed', 'trash'];
     try {
       const s = JSON.parse(localStorage.getItem('hub.bugcols') || 'null');
       if (Array.isArray(s) && s.some((k) => COLS.some((c) => c.key === k))) shown = s;
     } catch {}
     this.shown = new Set(shown);
     this.toggles = {};
+    // how wide each list is, against the others (dragged with the dividers between them; remembered per page)
+    this.widths = { open: 1, closed: 1, trash: 1 };
+    try {
+      const w = JSON.parse(localStorage.getItem('hub.colw.' + this.section) || '{}');
+      for (const k of Object.keys(this.widths)) if (w[k] > 0.05 && w[k] < 20) this.widths[k] = w[k];
+    } catch {}
     // all reports, only the internal ones (added here by the team), or only the external ones (from the website's contact form)
     this.source = 'all';
     try {
@@ -181,16 +186,65 @@ export class Bugs {
     if (this.filter) for (const [k, b] of Object.entries(this.seg)) b.classList.toggle('on', k === this.source);
     const on = COLS.filter((c) => this.shown.has(c.key));
     this.root.style.setProperty('--n', on.length);
-    // the open lists share the width; a folded one is a strip (on a phone it is left out)
-    const cols = (wide) => COLS.map((c) => (this.shown.has(c.key) ? wide : '42px')).join(' ');
-    this.root.style.setProperty('--cols', cols('minmax(0, 1fr)'));
-    this.root.style.setProperty('--cols-mid', cols('minmax(260px, 1fr)'));
     for (const c of COLS) {
-      const folded = !this.shown.has(c.key);
-      this.cols[c.key].classList.toggle('folded', folded);
-      this.cols[c.key].querySelector('.col-head').title = folded ? `Show ${c.title}` : '';
-      this.toggles[c.key].classList.toggle('on', !folded);
+      this.cols[c.key].hidden = !this.shown.has(c.key);
+      this.toggles[c.key].classList.toggle('on', this.shown.has(c.key));
     }
+    // a divider between each two lists that are shown
+    this.root.querySelectorAll('.col-resizer').forEach((r) => r.remove());
+    on.slice(0, -1).forEach((c, i) => this.cols[c.key].after(this.resizer(c.key, on[i + 1].key)));
+    this.applyWidths();
+  }
+  // the shown lists share the width as dragged; the dividers are the 14px between them
+  applyWidths() {
+    const on = COLS.filter((c) => this.shown.has(c.key));
+    const cols = (min) => on.map((c) => `minmax(${min}, ${this.widths[c.key].toFixed(4)}fr)`).join(' 14px ');
+    this.root.style.setProperty('--cols', cols('0'));
+    this.root.style.setProperty('--cols-mid', cols('260px'));
+  }
+  saveWidths() {
+    try {
+      localStorage.setItem('hub.colw.' + this.section, JSON.stringify(this.widths));
+    } catch {}
+  }
+  // drag to make the list on the left wider and the one on the right narrower (or the other way); double-click: even
+  resizer(a, b) {
+    const r = h('div', { class: 'col-resizer', title: 'Drag to resize the lists · double-click to make them even', role: 'separator', 'aria-orientation': 'vertical' });
+    r.addEventListener('dblclick', () => {
+      this.widths[a] = this.widths[b] = (this.widths[a] + this.widths[b]) / 2;
+      this.applyWidths();
+      this.saveWidths();
+    });
+    r.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      r.setPointerCapture(e.pointerId);
+      const A = this.cols[a].getBoundingClientRect().width;
+      const B = this.cols[b].getBoundingClientRect().width;
+      const fr = this.widths[a] + this.widths[b];
+      const min = Math.min(200, (A + B) / 2 - 1);
+      const x0 = e.clientX;
+      r.classList.add('on');
+      document.body.classList.add('col-resizing');
+      const move = (ev) => {
+        const wa = Math.max(min, Math.min(A + B - min, A + ev.clientX - x0));
+        this.widths[a] = (fr * wa) / (A + B);
+        this.widths[b] = fr - this.widths[a];
+        this.applyWidths();
+      };
+      const up = () => {
+        r.removeEventListener('pointermove', move);
+        r.removeEventListener('pointerup', up);
+        r.removeEventListener('pointercancel', up);
+        r.classList.remove('on');
+        document.body.classList.remove('col-resizing');
+        this.saveWidths();
+      };
+      r.addEventListener('pointermove', move);
+      r.addEventListener('pointerup', up);
+      r.addEventListener('pointercancel', up);
+    });
+    return r;
   }
   unmount() {
     this.offBranch?.();

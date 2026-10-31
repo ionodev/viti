@@ -176,6 +176,5 @@ async function remove(p) {
   }
 }
 
-document.getElementById('connect').addEventListener('click', connect);
 document.getElementById('look').addEventListener('click', () => modal('Appearance', h('div', { class: 'look' }, ...appearanceControls()), [{ label: 'Done', value: true, primary: true }]));
 load().catch((e) => toast(e.message, true));

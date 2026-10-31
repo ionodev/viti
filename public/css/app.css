@@ -320,7 +320,7 @@ body.loading #sidebar, body.loading #main, body.loading #chat { visibility: hidd
 @media (max-width: 600px) {
   .bugs { grid-template-columns: repeat(var(--n, 3), 86vw); scroll-snap-type: x mandatory; gap: 10px; padding: 0 10px 10px; }
   .bugs .col { scroll-snap-align: center; }
-  .bugs .col.folded { display: none; }
+  .bugs .col-resizer { display: none; }
   #chat { width: 100%; }
 }
 /* the chat slides in under the top bar (which stays over everything) */
@@ -706,11 +706,6 @@ kbd { font: 11px var(--mono); padding: 1px 5px; border: 1px solid var(--border-2
 .keys-cols dt { white-space: nowrap; }
 .keys-cols dd { margin: 0; font-size: 13px; }
 
-/* a folded list: a narrow strip with its name and count, click to open it */
-.col.folded { cursor: pointer; overflow: hidden; }
-.col.folded .col-body, .col.folded .todo-form, .col.folded .col-head .ord { display: none; }
-.col.folded .col-head { flex: 1; flex-direction: column; align-items: center; justify-content: flex-start; gap: 10px; padding: 12px 0; border-radius: 5px; writing-mode: vertical-rl; }
-.col.folded:hover .col-head { color: var(--gold); }
 
 /* the connection: shown only while it is lost */
 .conn { font: 12px var(--mono); color: var(--cream); background: var(--danger); padding: 3px 10px; border-radius: 12px; margin-right: 8px; white-space: nowrap; }

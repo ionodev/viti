@@ -3,7 +3,7 @@
 // how long a priority gives (see settings.js); here the dates are only shown.
 import { S, sectionLabel } from './state.js';
 import { api } from './api.js';
-import { h, toast, modal, confirmBox, promptBox, menu } from './ui.js';
+import { h, toast, modal, confirmBox, promptBox, menu, infoButton } from './ui.js';
 import { refCard, glyph } from './chat.js';
 
 const pad = (n) => String(n).padStart(2, '0');
@@ -30,10 +30,9 @@ export class Calendar {
     this.root = h(
       'div',
       { class: 'calendar' },
-      h('div', { class: 'cal-head' }, h('button', { class: 'btn small ghost', title: 'Last month', onclick: () => this.shift(-1) }, '‹'), this.title, h('button', { class: 'btn small ghost', title: 'Next month', onclick: () => this.shift(1) }, '›'), h('button', { class: 'btn small ghost', onclick: () => this.today() }, 'Today'), h('span', { class: 'grow' }), h('button', { class: 'btn small', onclick: () => this.add(iso(new Date())) }, '+ Label a date')),
+      h('div', { class: 'cal-head' }, h('button', { class: 'btn small ghost', title: 'Last month', onclick: () => this.shift(-1) }, '‹'), this.title, h('button', { class: 'btn small ghost', title: 'Next month', onclick: () => this.shift(1) }, '›'), h('button', { class: 'btn small ghost', onclick: () => this.today() }, 'Today'), h('span', { class: 'grow' }), infoButton('Click a day to label it. To point a label at something, press Reference on it first (a post-it, a to-do, a report, or a day in the chat) and pick it in the dialog. Open tasks with a deadline show here too.', 'down-left'), h('button', { class: 'btn small', onclick: () => this.add(iso(new Date())) }, '+ Label a date')),
       h('div', { class: 'cal-week' }, WEEK.map((d) => h('span', {}, d))),
       this.grid,
-      h('p', { class: 'cal-hint' }, 'Click a day to label it. To point a label at something, press Reference on it first (a post-it, a to-do, a report, or a day in the chat) and pick it in the dialog. Open tasks with a deadline show here too.'),
     );
     stage.append(this.root);
     await this.load();

@@ -145,3 +145,20 @@ export const typing = () => {
   const a = document.activeElement;
   return !!a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.isContentEditable);
 };
+
+// a small (i) button that shows a few lines of help when clicked (and hides them again: a click
+// anywhere else, or Esc); place = where the text opens: 'up-left', 'up-right', 'down-left' or 'down-right'
+export function infoButton(text, place = 'up-left') {
+  const pop = h('div', { class: 'info-pop ' + place, role: 'tooltip', hidden: true }, text);
+  const btn = h('button', { class: 'info-btn', type: 'button', title: 'How this works', 'aria-label': 'How this works' }, 'i');
+  const box = h('span', { class: 'info' }, btn, pop);
+  const away = (e) => (e.type === 'keydown' ? e.key === 'Escape' : !box.contains(e.target)) && show(false);
+  const show = (on) => {
+    pop.hidden = !on;
+    btn.classList.toggle('on', on);
+    document[on ? 'addEventListener' : 'removeEventListener']('mousedown', away, true);
+    document[on ? 'addEventListener' : 'removeEventListener']('keydown', away, true);
+  };
+  btn.addEventListener('click', () => show(pop.hidden));
+  return box;
+}

@@ -99,9 +99,13 @@ nav.drop-in { background: var(--accent-softer); }
 .col-head .ord, .col-head button.ord { font: 11.5px var(--font); letter-spacing: 0; text-transform: none; color: var(--text-3); }
 .col-head button.ord:hover { color: var(--accent-text); }
 .col.over { outline: 2px dashed var(--accent-line); }
-.col.folded .col-head { padding: 14px 0; }
-.col.folded:hover { background: var(--hover); }
-.col.folded:hover .col-head { color: var(--accent-text); }
+/* the dividers between the lists: drag to resize them (they are the gap between the lists) */
+.bugs { column-gap: 0; }
+.col-resizer { position: relative; cursor: col-resize; touch-action: none; }
+.col-resizer::after { content: ''; position: absolute; left: 50%; top: 12px; bottom: 12px; width: 3px; margin-left: -1.5px; border-radius: 3px; background: transparent; transition: background .12s; }
+.col-resizer:hover::after, .col-resizer.on::after { background: var(--accent-line); }
+.col-resizer.on::after { background: var(--accent); }
+body.col-resizing, body.col-resizing * { cursor: col-resize !important; user-select: none; }
 .col-empty { color: var(--text-3); font: 13px var(--font); }
 .bug { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 11px 13px; box-shadow: var(--shadow); transition: border-color .12s, box-shadow .12s; }
 .bug:hover { border-color: var(--border-2); box-shadow: var(--shadow-md); }
@@ -274,3 +278,16 @@ kbd { background: var(--panel-2); border: 1px solid var(--border-2); border-bott
 .notedoc h1, .notedoc h2, .notedoc h3 { font-family: var(--font-display); }
 .notedoc pre { background: var(--code-bg); border: 1px solid var(--border); }
 .note-status { font: 12px var(--font); color: var(--text-3); }
+
+/* (i): a few lines of help, shown when asked for */
+.info { position: relative; display: inline-flex; vertical-align: middle; pointer-events: auto; }
+.info-btn { width: 24px; height: 24px; padding: 0; border-radius: 50%; border: 1px solid var(--border-2); background: var(--panel); color: var(--text-2); font: italic 700 13px/1 Georgia, 'Times New Roman', serif; display: grid; place-items: center; box-shadow: var(--shadow); }
+.info-btn:hover, .info-btn.on { border-color: var(--accent); color: var(--accent-text); background: var(--accent-softer); }
+.info-pop { position: absolute; z-index: 60; width: max-content; max-width: 320px; padding: 10px 13px; background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow-lg); font: 13px/1.5 var(--font); letter-spacing: 0; text-transform: none; white-space: normal; text-align: left; }
+.info-pop.up-left { bottom: calc(100% + 8px); right: 0; }
+.info-pop.up-right { bottom: calc(100% + 8px); left: 0; }
+.info-pop.down-left { top: calc(100% + 8px); right: 0; }
+.info-pop.down-right { top: calc(100% + 8px); left: 0; }
+.cairn-help { gap: 8px; }
+.cairn-help .zl, .cairn-help > span { margin-left: 4px; }
+.graph-help { left: 14px; bottom: 14px; }
