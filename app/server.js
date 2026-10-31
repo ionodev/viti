@@ -88,10 +88,19 @@ export async function startServer({ root, dataDir, seal, unseal, port = 0, key: 
   // branch tags come from (another repository: the web hub takes them from the game's). None yet: the
   // desktop's place, and the repository's own branches.
   const PLACES = [[DATA_BRANCH, 'viti'], ['hub-data', 'hub']];
+  // (both there: the one with more in it; an empty one can be left by Viti 0.1.0, which only knew its own place)
   async function findBackup(repo, token) {
+    let best = null;
     for (const [branch, dir] of PLACES) {
       const meta = await gh(token, `/repos/${repo}/contents/${dir}/meta.json?ref=${branch}`);
       if (meta.status !== 200) continue;
+      const tree = await gh(token, `/repos/${repo}/git/trees/${branch}?recursive=1`);
+      const files = Array.isArray(tree.body.tree) ? tree.body.tree.filter((t) => t.type === 'blob' && t.path.startsWith(dir + '/')).length : 0;
+      if (best && best.files >= files) continue;
+      best = { branch, dir, files };
+    }
+    if (best) {
+      const { branch, dir } = best;
       let branchesFrom = '';
       const desc = await gh(token, `/repos/${repo}/contents/${dir}/viti.json?ref=${branch}`);
       if (desc.status === 200 && desc.body.content) {
@@ -100,9 +109,9 @@ export async function startServer({ root, dataDir, seal, unseal, port = 0, key: 
           if (/^[\w.-]+\/[\w.-]+$/.test(d.branchesFrom || '')) branchesFrom = d.branchesFrom;
         } catch {}
       }
-      return { branch, dir, branchesFrom };
+      return { branch, dir, branchesFrom, found: true };
     }
-    return { branch: DATA_BRANCH, dir: 'viti', branchesFrom: '' };
+    return { branch: DATA_BRANCH, dir: 'viti', branchesFrom: '', found: false };
   }
 
   // ---- open and close a project
@@ -112,11 +121,24 @@ export async function startServer({ root, dataDir, seal, unseal, port = 0, key: 
     if (current?.id === id) return current;
     await close();
     const dir = path.join(dataDir, 'projects', id);
+    const token = tokenOf(id);
+    // a project connected by Viti 0.1.0 (which only looked for its own backup place): look again. If the
+    // backup is elsewhere (the web Viti's hub-data, say), the copy here was started empty: it is set aside
+    // (kept, renamed) and the project is fetched from the real backup.
+    if (!p.dir && token) {
+      try {
+        const place = await findBackup(p.repo, token);
+        if (place.found && (place.branch !== (p.branch || DATA_BRANCH) || place.dir !== 'viti') && fs.existsSync(dir)) fs.renameSync(dir, `${dir}.set-aside-${Date.now()}`);
+        Object.assign(p, { branch: place.branch, dir: place.dir, branchesFrom: place.branchesFrom });
+        saveCfg();
+      } catch (e) {
+        console.error('finding the backup:', e.message);
+      }
+    }
     fs.mkdirSync(dir, { recursive: true });
     const dbFile = path.join(dir, 'viti.sqlite');
     const fresh = !fs.existsSync(dbFile);
-    const token = tokenOf(id);
-    const env = { GITHUB_REPO: p.repo, GITHUB_TOKEN: token, GITHUB_BRANCH: p.branch || DATA_BRANCH, GITHUB_DIR: p.dir || 'viti', KOLVER_REPO: p.branchesFrom || p.repo, KOLVER_TOKEN: token, MIRROR_DELAY_MS: '60000' };
+    const env = { GITHUB_API: GH_API, KOLVER_API: GH_API, GITHUB_REPO: p.repo, GITHUB_TOKEN: token, GITHUB_BRANCH: p.branch || DATA_BRANCH, GITHUB_DIR: p.dir || 'viti', KOLVER_REPO: p.branchesFrom || p.repo, KOLVER_TOKEN: token, MIRROR_DELAY_MS: '60000' };
     // (who you are in this project: your GitHub sign-in, unless the backup already knows you by another address)
     const who = { ...(p.user || {}), ...(p.as ? { email: p.as } : {}) };
     const host = await openProject({ dbFile, env, user: who });
