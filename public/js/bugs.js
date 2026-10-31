@@ -66,7 +66,6 @@ export class Bugs {
       this.heads[c.key] = n;
       this.root.append(col);
     }
-    this.add = h('button', { class: 'btn bugbar', onclick: () => this.newReport() }, '+ New report');
     // which lists are shown: any one, two or all three (remembered); a hidden one takes no room at all
     let shown = ['open', 'closed', 'trash'];
     try {
@@ -111,7 +110,7 @@ export class Bugs {
     this.top = h('div', { class: 'bugtop' }, h('span', { class: 'label' }, 'Show'), COLS.map((c) => (this.toggles[c.key] = h('button', { class: 'tog', onclick: () => this.toggle(c.key) }, c.title, ' ', (this.tcount[c.key] = h('span', { class: 'n' }))))), this.tools);
     this.root.querySelectorAll('.col').forEach((col) => (this.cols[col.dataset.key] = col));
     this.selbar = h('div', { class: 'selbar', hidden: true });
-    stage.append(this.top, this.root, this.add, this.selbar);
+    stage.append(this.top, this.root, this.selbar);
     // (the header can be one row or two: the lists start right under it)
     this.topSize = new ResizeObserver(() => (this.root.style.top = this.top.offsetHeight + 'px'));
     this.topSize.observe(this.top);
@@ -139,6 +138,7 @@ export class Bugs {
     this.layout();
     loadBranches().then(() => this.fillBranchSelect());
     this.offBranch = on('branchview', () => this.onBranchView());
+    await this.mountAdd();
     await this.load();
   }
   toggle(key) {
@@ -595,21 +595,76 @@ export class Bugs {
     return sel;
   }
 
-  async newReport() {
+  // ---- adding: a box on top of the Open list. Write and press Enter (Shift+Enter: a new line). A report can
+  // take screenshots too: paste or drop them into the box (up to 5).
+  get takesShots() {
+    return true;
+  }
+  async mountAdd() {
+    this.input = h('textarea', { class: 'todo-add', rows: '1', placeholder: 'Write text and press enter', maxlength: this.takesShots ? '10000' : '2000' });
+    const fit = () => {
+      this.input.style.height = 'auto';
+      this.input.style.height = `${Math.min(160, this.input.scrollHeight + 2)}px`;
+    };
+    this.fitAdd = fit;
+    this.input.addEventListener('input', fit);
+    this.input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+        e.preventDefault();
+        this.addRow();
+      }
+    });
+    this.pending = []; // screenshots waiting to go with the next report
+    this.shotBox = h('div', { class: 'add-shots', hidden: true });
+    if (this.takesShots) {
+      const take = (files) => {
+        const imgs = [...files].filter((f) => /^image\/(png|jpeg|webp|gif)$/.test(f.type));
+        if (!imgs.length) return false;
+        this.pending.push(...imgs);
+        if (this.pending.length > 5) toast('A report takes up to 5 screenshots.', true);
+        this.pending = this.pending.slice(0, 5);
+        this.drawShots();
+        return true;
+      };
+      this.input.addEventListener('paste', (e) => take(e.clipboardData?.files || []) && e.preventDefault());
+      this.input.addEventListener('dragover', (e) => e.preventDefault());
+      this.input.addEventListener('drop', (e) => take(e.dataTransfer?.files || []) && e.preventDefault());
+      this.input.title = 'Paste or drop screenshots here too';
+    }
+    // the branch a new one is about: the latest by default
     await loadBranches();
-    const ta = h('textarea', { placeholder: 'Describe what you found or noticed, and where. (markdown works)' });
-    const files = h('input', { type: 'file', accept: 'image/png,image/jpeg,image/webp,image/gif', multiple: true });
-    const branch = S.branches.list.length ? this.branchSelect() : null;
-    const body = h('div', {}, h('label', {}, 'What happened'), ta, branch ? h('label', { style: { marginTop: '12px' } }, 'Branch') : null, branch, h('label', { style: { marginTop: '12px' } }, 'Screenshot(s), if you have any'), files);
-    if ((await modal('New report', body, [{ label: 'Cancel', value: false }, { label: 'Add report', value: true, primary: true }])) !== true) return;
-    const message = ta.value.trim();
-    if (!message) return toast('Write what happened first.', true);
+    this.addBranch = S.branches.list.length ? this.branchSelect() : null;
+    this.cols.open.insertBefore(h('div', { class: 'todo-form' }, this.input, this.shotBox, this.addBranch), this.bodies.open);
+  }
+  drawShots() {
+    this.shotBox.hidden = !this.pending.length;
+    this.shotBox.replaceChildren(
+      ...this.pending.map((f, i) => {
+        const url = URL.createObjectURL(f);
+        return h('span', { class: 'add-shot' }, h('img', { src: url, alt: '', onload: () => URL.revokeObjectURL(url) }), h('button', { type: 'button', title: 'Leave this one out', onclick: () => (this.pending.splice(i, 1), this.drawShots()) }, '×'));
+      }),
+    );
+  }
+  async addRow() {
+    const message = this.input.value.trim();
+    if (!message) return;
+    const shots = this.pending;
+    this.input.value = '';
+    this.pending = [];
+    this.drawShots();
+    this.fitAdd();
     try {
       const images = [];
-      for (const f of [...files.files].slice(0, 5)) images.push((await uploadImage(f)).id);
-      await api('POST', '/api/bugs', { message, images, section: this.section, branch: branch?.value });
+      for (const f of shots) images.push((await uploadImage(f)).id);
+      await api('POST', '/api/bugs', { message, images, section: this.section, branch: this.addBranch?.value });
     } catch (e) {
+      this.input.value = message;
+      this.pending = shots;
+      this.drawShots();
+      this.fitAdd();
       toast(e.message, true);
     }
+    this.input.focus();
   }
+
 }

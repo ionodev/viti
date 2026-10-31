@@ -2,7 +2,6 @@
 // and an X (not needed: it moves to Trash). Closed rows have a Trash button, Trash rows a Delete button.
 // It is the same machinery as the report lists (three lists, live, with a chat), just a different face.
 import { S, user, setBranchView } from './state.js';
-import { api, loadBranches } from './api.js';
 import { h, ago, stamp, toast } from './ui.js';
 import { renderInto } from './md.js';
 import { Bugs } from './bugs.js';
@@ -48,40 +47,9 @@ export class Todo extends Bugs {
     return false; // (a to-do list has no external rows)
   }
 
-  async mount(stage) {
-    await super.mount(stage);
-    this.add.remove(); // (no "+ New report": rows are added in the box on top of the Open list)
-    this.input = h('textarea', { class: 'todo-add', rows: '1', placeholder: 'Add a row…', maxlength: '2000' });
-    const fit = () => {
-      this.input.style.height = 'auto';
-      this.input.style.height = `${Math.min(160, this.input.scrollHeight + 2)}px`;
-    };
-    this.input.addEventListener('input', fit);
-    this.input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
-        e.preventDefault();
-        this.addRow().then(fit);
-      }
-    });
-    // the branch a new row is about: the latest by default
-    await loadBranches();
-    this.addBranch = S.branches.list.length ? this.branchSelect() : null;
-    // viti picked for the new row: the page shows the viti rows too
-    this.addBranch?.addEventListener('change', () => (this.addBranch.value === VITI ? this.setBranchFilter(VITI) : this.vitiOnly && this.setBranchFilter(S.branchView)));
-    this.cols.open.insertBefore(h('div', { class: 'todo-form' }, this.input, this.addBranch, h('button', { class: 'btn small', onclick: () => this.addRow() }, 'Add')), this.bodies.open);
-  }
-
-  async addRow() {
-    const message = this.input.value.trim();
-    if (!message) return;
-    this.input.value = '';
-    try {
-      await api('POST', '/api/bugs', { message, section: this.section, branch: this.addBranch?.value });
-    } catch (e) {
-      this.input.value = message;
-      toast(e.message, true);
-    }
-    this.input.focus();
+  // (rows are added in the box on top of the Open list, as reports are; a row takes no screenshots)
+  get takesShots() {
+    return false;
   }
 
   label(status) {

@@ -269,7 +269,6 @@ code, pre, kbd { font-family: var(--code); }
 .bug:not(:hover):not(:focus-within) .chip.unset { display: none; }
 .bug-meta:empty { display: none; }
 .bug .moved { font: 11px var(--mono); color: var(--dim); margin-top: 6px; }
-.bugbar { position: absolute; right: 18px; bottom: 18px; z-index: 40; }
 
 /* ---------- dialogs, menus, toasts, lightbox ---------- */
 .overlay { position: fixed; inset: 0; z-index: 300; background: var(--scrim); display: grid; place-items: center; padding: 20px; }

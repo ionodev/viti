@@ -291,3 +291,11 @@ kbd { background: var(--panel-2); border: 1px solid var(--border-2); border-bott
 .cairn-help { gap: 8px; }
 .cairn-help .zl, .cairn-help > span { margin-left: 4px; }
 .graph-help { left: 14px; bottom: 14px; }
+
+/* the add box on top of the Open list: write and press Enter; under it the branch, and a report's screenshots */
+.todo-form .branch-select { flex: 1 1 100%; max-width: none; }
+.add-shots { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 6px; }
+.add-shot { position: relative; }
+.add-shot img { display: block; width: 64px; height: 48px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border); }
+.add-shot button { position: absolute; top: -6px; right: -6px; width: 18px; height: 18px; padding: 0; border-radius: 50%; border: 1px solid var(--border-2); background: var(--panel); color: var(--text-2); font-size: 12px; line-height: 1; }
+.add-shot button:hover { background: var(--danger); border-color: var(--danger); color: #fff; }
