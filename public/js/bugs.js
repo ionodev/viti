@@ -637,27 +637,60 @@ export class Bugs {
     this.addPrio = this.prioSlider();
     this.cols.open.insertBefore(h('div', { class: 'todo-form' }, this.input, this.shotBox, h('div', { class: 'add-opts' }, this.addPrio.el, this.addBranch)), this.bodies.open);
   }
-  // the priority of a new one: a slider with four notches (none, low, medium, high), in the level's colour
+  // the priority of a new one: a slider with four notches (none, low, medium, high). The handle glides to
+  // the notch (click one, drag, or use the arrow keys) and takes the level's colour.
   prioSlider() {
     const LEVELS = ['', 'low', 'medium', 'high'];
-    const range = h('input', { type: 'range', class: 'prio-range', min: '0', max: '3', step: '1', value: '0', 'aria-label': 'Priority' });
+    let at = 0;
+    const thumb = h('span', { class: 'ps-thumb' });
+    const fill = h('span', { class: 'ps-fill' });
+    const track = h('span', { class: 'ps-track' }, h('span', { class: 'ps-line' }), fill, LEVELS.map((_, i) => h('span', { class: 'ps-notch', style: { left: `${(i / 3) * 100}%` } })), thumb);
     const name = h('span', { class: 'prio-name' });
-    const el = h('label', { class: 'prio-slide', title: 'The priority (a deadline comes with it, as set in Settings)' }, range, name);
-    const paint = () => {
-      const k = LEVELS[range.value];
+    const el = h('div', { class: 'prio-slide', role: 'slider', tabindex: '0', 'aria-label': 'Priority', 'aria-valuemin': '0', 'aria-valuemax': '3', title: 'The priority (a deadline comes with it, as set in Settings)' }, track, name);
+    const set = (i) => {
+      i = Math.max(0, Math.min(3, i));
+      if (i !== at) {
+        // a little bump when it lands on a new notch
+        thumb.classList.remove('pop');
+        void thumb.offsetWidth;
+        thumb.classList.add('pop');
+      }
+      at = i;
+      const k = LEVELS[i];
+      thumb.style.left = fill.style.width = `${(i / 3) * 100}%`;
       name.textContent = k ? PRIORITY[k] : 'No priority';
       el.dataset.level = k || 'none';
+      el.setAttribute('aria-valuenow', String(i));
+      el.setAttribute('aria-valuetext', name.textContent);
     };
-    range.addEventListener('input', paint);
-    paint();
+    const nearest = (x) => {
+      const r = track.getBoundingClientRect();
+      return Math.round(((x - r.left) / r.width) * 3);
+    };
+    el.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      el.focus();
+      el.setPointerCapture(e.pointerId);
+      set(nearest(e.clientX));
+      const move = (ev) => set(nearest(ev.clientX));
+      const up = () => (el.removeEventListener('pointermove', move), el.removeEventListener('pointerup', up));
+      el.addEventListener('pointermove', move);
+      el.addEventListener('pointerup', up);
+    });
+    el.addEventListener('keydown', (e) => {
+      const step = { ArrowRight: 1, ArrowUp: 1, ArrowLeft: -1, ArrowDown: -1 }[e.key];
+      if (step) (e.preventDefault(), set(at + step));
+      else if (e.key === 'Home' || e.key === 'End') (e.preventDefault(), set(e.key === 'Home' ? 0 : 3));
+    });
+    set(0);
     return {
       el,
       get value() {
-        return LEVELS[range.value];
+        return LEVELS[at];
       },
       set value(v) {
-        range.value = String(Math.max(0, LEVELS.indexOf(v)));
-        paint();
+        set(Math.max(0, LEVELS.indexOf(v)));
       },
     };
   }

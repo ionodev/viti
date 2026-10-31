@@ -301,13 +301,20 @@ kbd { background: var(--panel-2); border: 1px solid var(--border-2); border-bott
 .add-shot button { position: absolute; top: -6px; right: -6px; width: 18px; height: 18px; padding: 0; border-radius: 50%; border: 1px solid var(--border-2); background: var(--panel); color: var(--text-2); font-size: 12px; line-height: 1; }
 .add-shot button:hover { background: var(--danger); border-color: var(--danger); color: #fff; }
 
-/* the priority slider in the add box: four notches, coloured by the level */
-.prio-slide { --lvl: var(--text-3); flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 4px 10px; border: 1px solid var(--border-2); border-radius: 8px; background: var(--panel); cursor: pointer; }
+/* the priority slider in the add box: four notches; the handle glides between them and takes the level's colour */
+.prio-slide { --lvl: var(--text-3); flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 6px 12px; border: 1px solid var(--border-2); border-radius: 8px; background: var(--panel); cursor: pointer; touch-action: none; user-select: none; transition: border-color .25s; }
+.prio-slide:focus-visible { outline: 0; border-color: var(--lvl); box-shadow: 0 0 0 3px color-mix(in srgb, var(--lvl) 22%, transparent); }
 .prio-slide[data-level='low'] { --lvl: var(--green); }
 .prio-slide[data-level='medium'] { --lvl: var(--amber); }
 .prio-slide[data-level='high'] { --lvl: var(--red); }
-.prio-range { flex: 1 1 auto; min-width: 50px; margin: 0; height: 18px; -webkit-appearance: none; appearance: none; cursor: pointer; background:
-  radial-gradient(circle, var(--border-2) 3px, transparent 3.5px) 0% 50% / 14px 14px no-repeat, radial-gradient(circle, var(--border-2) 3px, transparent 3.5px) 33.333% 50% / 14px 14px no-repeat, radial-gradient(circle, var(--border-2) 3px, transparent 3.5px) 66.667% 50% / 14px 14px no-repeat, radial-gradient(circle, var(--border-2) 3px, transparent 3.5px) 100% 50% / 14px 14px no-repeat,
-  linear-gradient(var(--border), var(--border)) center / calc(100% - 14px) 2px no-repeat; }
-.prio-range::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--lvl); border: 2px solid var(--panel); box-shadow: 0 0 0 1px var(--lvl); }
-.prio-name { flex: none; width: 70px; font: 600 12px var(--font); color: var(--lvl); white-space: nowrap; }
+.ps-track { position: relative; flex: 1 1 auto; min-width: 60px; height: 16px; margin: 0 7px; }
+.ps-line, .ps-fill { position: absolute; left: 0; top: 50%; height: 2px; margin-top: -1px; border-radius: 2px; }
+.ps-line { right: 0; background: var(--border); }
+.ps-fill { width: 0; background: var(--lvl); transition: width .28s cubic-bezier(.3, .7, .3, 1), background-color .28s; }
+.ps-notch { position: absolute; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: var(--border-2); transition: background-color .28s; }
+.ps-thumb { position: absolute; top: 50%; left: 0; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: var(--lvl); border: 2px solid var(--panel); box-shadow: 0 0 0 1px var(--lvl), 0 1px 3px rgba(0, 0, 0, .25); transition: left .28s cubic-bezier(.3, .7, .3, 1.25), background-color .28s, box-shadow .28s; }
+.ps-thumb.pop { animation: ps-pop .32s ease-out; }
+@keyframes ps-pop { 40% { transform: scale(1.35); } 100% { transform: scale(1); } }
+.prio-slide:hover .ps-thumb { box-shadow: 0 0 0 1px var(--lvl), 0 0 0 5px color-mix(in srgb, var(--lvl) 18%, transparent); }
+.prio-name { flex: none; width: 70px; font: 600 12px var(--font); color: var(--lvl); white-space: nowrap; transition: color .28s; }
+body.noanim .ps-thumb, body.noanim .ps-fill { transition: none; animation: none; }
