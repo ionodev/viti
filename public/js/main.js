@@ -107,31 +107,14 @@ function chrome() {
     })
     .catch(() => {});
   $('#project-btn').addEventListener('click', () => (location.href = '/home'));
-  $('#add-section').addEventListener('click', async () => {
-    const name = await promptBox('New section', 'Name', '', 'Create');
-    if (!name) return;
-    try {
-      const r = await api('POST', '/api/sections', { name });
-      go(r.id);
-    } catch (e) {
-      toast(e.message, true);
-    }
-  });
+  // "+ New section" under Sections and under Reports: a board or a report list, in that group
+  $('#add-section').addEventListener('click', () => newSectionIn({ id: '@sections', name: 'Sections' }, 'board'));
   $('#add-category').addEventListener('click', async () => {
     const name = await promptBox('New category', 'Name', '', 'Create');
     if (!name) return;
     api('POST', '/api/categories', { name }).catch((e) => toast(e.message, true));
   });
-  $('#add-report').addEventListener('click', async () => {
-    const name = await promptBox('New section', 'Name', '', 'Create');
-    if (!name) return;
-    try {
-      const r = await api('POST', '/api/sections', { name, kind: 'bugs' });
-      go(r.id);
-    } catch (e) {
-      toast(e.message, true);
-    }
-  });
+  $('#add-report').addEventListener('click', () => newSectionIn({ id: '@reports', name: 'Reports' }, 'bugs'));
   $('#settings').addEventListener('click', openSettings);
   // Ctrl+K (or the button in the menu) searches everything; ? lists the keyboard shortcuts
   const search = () => openSearch((r) => (document.body.classList.remove('menu-open'), r.k === 'section' ? (location.hash = `#/${r.section}`) : goRef(r)));
@@ -498,10 +481,11 @@ function categoryMenu(x, y, c) {
     } },
   ]);
 }
-// a new section in one of your categories: a board, or a list of reports
-async function newSectionIn(c) {
+// a new section in a group of the menu (Sections, Reports, or one of your categories): a board, or a list of reports
+async function newSectionIn(c, preferred = 'board') {
   const input = h('input', { type: 'text', maxlength: '60', placeholder: 'Name' });
   const kind = h('select', {}, h('option', { value: 'board' }, 'Board (notes, text, images)'), h('option', { value: 'bugs' }, 'Reports (Open, Closed, Trash)'));
+  kind.value = preferred;
   input.addEventListener('keydown', (e) => e.key === 'Enter' && document.querySelector('.overlay .btn:not(.ghost)')?.click());
   const body = h('div', {}, h('label', {}, 'Name'), input, h('label', { style: { marginTop: '12px' } }, 'Kind'), kind);
   if ((await modal(`New section in ${c.name}`, body, [{ label: 'Cancel', value: false }, { label: 'Create', value: true, primary: true }])) !== true) return;
@@ -517,9 +501,14 @@ async function newSectionIn(c) {
 function drawSidebar() {
   const catIds = new Set(S.categories.map((c) => c.id));
   const inCat = (s) => s.category && catIds.has(s.category);
+  // Sections and Reports each take boards and report lists: one that was put in either says so ('@sections',
+  // '@reports'); the others are where their kind puts them
+  const content = (s) => s.kind !== 'mail' && !isProject(s) && !s.parent && !inCat(s);
+  const home = (s) => (s.category === '@sections' ? 'sections' : s.category === '@reports' ? 'reports' : isReport(s) ? 'reports' : 'sections');
+  const anyContent = (s) => s.kind !== 'mail' && !isProject(s);
   const groups = [
-    { nav: $('#sections'), category: '', accept: (s) => !isReport(s) && s.kind !== 'mail' && !isProject(s), list: S.sections.filter((s) => !isReport(s) && !inCat(s) && !s.parent) },
-    { nav: $('#special'), category: '', accept: isReport, list: S.sections.filter((s) => isReport(s) && !inCat(s)) },
+    { nav: $('#sections'), category: '@sections', accept: anyContent, list: S.sections.filter((s) => content(s) && home(s) === 'sections') },
+    { nav: $('#special'), category: '@reports', accept: anyContent, list: S.sections.filter((s) => content(s) && home(s) === 'reports') },
   ];
   const custom = $('#custom');
   custom.replaceChildren();
