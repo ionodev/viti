@@ -94,3 +94,4 @@ details.how li { margin: 4px 0; }
 .repo-name small { color: var(--text-3); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .repo-empty { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 26px 10px; color: var(--text-3); font-size: 13px; }
 .repo-other { margin: 12px 0 0 !important; font-size: 13px; }
+.device-note { margin: 0 !important; font-size: 12.5px; color: var(--text-3) !important; max-width: 420px; }

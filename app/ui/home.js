@@ -134,6 +134,7 @@ async function signIn(after) {
     h('p', {}, 'Enter this code on GitHub to let Viti work with your repositories. It reads their branches and writes its own backup branch (', h('code', {}, 'viti-data'), '); your code is never changed.'),
     code,
     h('button', { class: 'btn', type: 'button', onclick: openGitHub }, 'Copy the code and open GitHub'),
+    h('p', { class: 'device-note' }, 'This is not your authenticator code. If GitHub first asks you to log in, use your password and authenticator as usual; then paste this code (it is copied) and press Authorize.'),
     status,
   );
   let done = false;
