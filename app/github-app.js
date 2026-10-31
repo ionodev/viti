@@ -4,7 +4,7 @@
 //   name "Viti", homepage https://vardengames.com, callback URL https://vardengames.com (not used)
 //   then tick "Enable Device Flow", and put its Client ID here (it is public).
 // VITI_GITHUB_CLIENT_ID in the environment overrides it (for trying another app).
-export const GITHUB_CLIENT_ID = process.env.VITI_GITHUB_CLIENT_ID || '';
+export const GITHUB_CLIENT_ID = process.env.VITI_GITHUB_CLIENT_ID || 'Ov23lihG7PeySSgXE9fk';
 
 // what Viti asks for: the repositories you can see, to read their branches and write its backup branch
 export const SCOPE = 'repo';

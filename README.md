@@ -11,7 +11,9 @@ A project page for any GitHub repository: boards (post-its, text, images, drawin
 
 Run `dist/Viti-Setup-0.1.0.exe` (installs for you only, no admin rights), or `dist/Viti-0.1.0-portable.exe` (runs as it is). The builds are not code-signed yet, so Windows SmartScreen asks once: **More info → Run anyway**.
 
-Connecting a repository needs a **fine-grained token**: GitHub → Settings → Developer settings → Fine-grained tokens → Generate new token. Repository access: only that repository. Permissions: **Contents: Read and write**. The home screen has the same steps. Tokens are kept encrypted with Windows' protection for your user, in `%APPDATA%\Viti`, and only ever sent to GitHub.
+**Sign in with GitHub** (top right, or when you connect a repository): Viti shows a short code and opens GitHub; enter it there and approve, and Viti lists the repositories you can write to. Pick one. The sign-in is kept encrypted with Windows' protection for your user, in `%APPDATA%\Viti`, and only ever sent to GitHub. It is Viti's OAuth App (`app/github-app.js`, device flow, no secret); an organisation that restricts third-party apps has to approve it once (Organisation settings → Third-party access).
+
+A repository the sign-in cannot reach can still be connected with a fine-grained token (Contents: Read and write on that repository): "Connect it with a token instead" in the list.
 
 ## How it is built
 
