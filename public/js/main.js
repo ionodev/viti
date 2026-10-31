@@ -1,5 +1,6 @@
 // Viti: starts the page, draws the sidebar, moves between sections, and passes on what the server
 // says is happening (a message, a moved item, a new bug report).
+import { icon, kindIcon } from './icons.js';
 import { S, emit, on, user, sectionById, setBranchView } from './state.js';
 import { api, Live, loadBranches, uploadPdf } from './api.js';
 import { sectionLabel } from './state.js';
@@ -139,17 +140,8 @@ function chrome() {
     if (k === 'animate') applySettings();
     if (k === 'titleCount') drawSidebar();
   });
-  $('#me').addEventListener('click', async () => {
-    const name = await promptBox('Your name', 'Shown on what you write', S.me.name);
-    if (!name || name === S.me.name) return;
-    try {
-      await api('PATCH', '/api/me', { name });
-      S.me.name = name;
-      drawSidebar();
-    } catch (e) {
-      toast(e.message, true);
-    }
-  });
+  // your name and picture are your GitHub account's (as on the home screen): changed on GitHub, not here
+  $('#me').addEventListener('click', () => toast('Your name and picture come from your GitHub account. Change them on GitHub (Settings › Public profile); Viti picks them up the next time you open the project.'));
   $('#sync').addEventListener('click', async () => {
     if (!S.sync?.configured) return toast('This project is not backed up: sign in with GitHub on the home screen (or give the project a token in its ⋯ menu there).');
     // an empty repository: offer to give it its first commit
@@ -310,7 +302,7 @@ function subEl(c) {
   return h(
     'a',
     { class: 'sec sub' + (c.id === S.section ? ' on' : '') + (c.unread ? ' unread' : ''), dataset: { id: c.id }, href: `#/${c.id}`, onclick: (e) => clickSection(c, e), oncontextmenu: (e) => (e.preventDefault(), sectionMenu(e.clientX, e.clientY, c)) },
-    h('span', { class: 'hash' }, c.kind === 'board' ? '\u2387' : glyph(c.kind)),
+    h('span', { class: 'hash' }, c.kind === 'board' ? icon('branch') : kindIcon(c.kind)),
     h('span', { class: 'nm', title: c.name }, c.name),
     c.unread ? h('span', { class: 'golddot', title: `${c.unread} new message${c.unread === 1 ? '' : 's'}` }, c.unread > 99 ? '99+' : String(c.unread)) : null,
     h('button', { class: 'dots', title: 'Delete this subsection', onclick: (e) => (e.preventDefault(), e.stopPropagation(), sectionMenu(e.clientX, e.clientY, c)) }, '\u22ef'),
@@ -395,7 +387,7 @@ function secEl(s) {
   return h(
     'a',
     { class: 'sec' + (s.id === S.section ? ' on' : '') + (s.unread ? ' unread' : ''), dataset: { id: s.id }, href: `#/${s.id}`, onclick: (e) => clickSection(s, e), oncontextmenu: (e) => !s.core && (e.preventDefault(), sectionMenu(e.clientX, e.clientY, s)) },
-    h('span', { class: 'hash' }, glyph(s.kind)),
+    h('span', { class: 'hash' }, kindIcon(s.kind)),
     h('span', { class: 'nm' }, s.name),
     open ? h('span', { class: 'badge' + (s.kind === 'mail' ? '' : ' quiet'), title: s.kind === 'mail' ? 'New emails' : 'Open reports' }, open) : null,
     s.unread ? h('span', { class: 'golddot', title: `${s.unread} new message${s.unread === 1 ? '' : 's'}` }, s.unread > 99 ? '99+' : String(s.unread)) : null,
@@ -784,7 +776,7 @@ function wire(live) {
     const msg = m.msg;
     if (view instanceof Overview) view.refreshSoon();
     // someone else wrote: a chime (and a pop-up if you are elsewhere)
-    if (msg.author !== S.me.email && !msg.deleted && !m.edited) announce(msg, `${glyph(sectionById(msg.section)?.kind)} ${sectionLabel(msg.section)}`, () => go(msg.section));
+    if (msg.author !== S.me.email && !msg.deleted && !m.edited) announce(msg, sectionLabel(msg.section), () => go(msg.section));
     if (msg.mentions?.includes(S.me.email) && !msg.deleted && msg.author !== S.me.email) showMention(msg);
     if (msg.section === chat.section) {
       chat.add(msg);

@@ -476,3 +476,18 @@ body.noanim .ps-thumb, body.noanim .ps-fill { transition: none; }
 .cm-bar .grow { flex: 1; }
 .ms-sig { width: 100%; min-height: 110px; resize: vertical; padding: 9px 11px; font: 14px/1.5 var(--font); background: var(--panel); color: var(--text); border: 1px solid var(--border-2); border-radius: 8px; outline: none; }
 .ms-sig:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+/* icons (icons.js): line drawings in the text's colour, sized with the text */
+.ic { display: inline-flex; width: 1.15em; height: 1.15em; vertical-align: -0.2em; flex: none; }
+.ic svg { width: 100%; height: 100%; }
+.sec .hash .ic { width: 16px; height: 16px; vertical-align: -3px; }
+.ms-btn .ic, .ct .ic, .icon .ic { width: 16px; height: 16px; vertical-align: 0; }
+.menu.switcher .sw-name { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+.chip .ic { width: 12px; height: 12px; vertical-align: -1.5px; }
+.cal-chip .ic { width: 11px; height: 11px; vertical-align: -1px; }
+.chat-title .ic { width: 15px; height: 15px; vertical-align: -2px; margin-right: 2px; }
+.project-btn .chev .ic { width: 14px; height: 14px; }
+.me .ic { width: 16px; height: 16px; margin-right: 4px; }
+.emoji-btn .ic { width: 20px; height: 20px; }
+.item.doc .dicon .ic { width: 20px; height: 20px; }
+.mail-row .clip .ic { width: 13px; height: 13px; }

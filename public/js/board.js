@@ -1,5 +1,6 @@
 // The canvas of one section: notes, markdown text and images you can place, move, resize and edit, with
 // pan and zoom, undo, and everything kept in step live with the others looking at the same board.
+import { icon } from './icons.js';
 import { S, user, imageUrl, sectionById } from './state.js';
 import { api, uploadImage, uploadPdf } from './api.js';
 import { h, toast, typing, menu, lightbox, promptBox } from './ui.js';
@@ -368,7 +369,9 @@ export class Board {
       const pdf = (sec?.kind || it.data.kind) === 'pdf';
       el.classList.toggle('gone', !sec);
       el.classList.toggle('pdf', pdf);
-      el.querySelector('.dicon').textContent = pdf ? 'PDF' : '\u270e';
+      const di = el.querySelector('.dicon');
+      if (pdf) di.textContent = 'PDF';
+      else di.replaceChildren(icon('note'));
       el.querySelector('b').textContent = sec?.name || it.data.name || (pdf ? 'PDF' : 'Note');
       el.querySelector('small').textContent = sec ? (pdf ? 'PDF · double-click to open' : 'Note · double-click to write') : 'Removed';
       el.title = pdf ? 'A PDF: double-click to open it' : 'A note: double-click to open the editor';

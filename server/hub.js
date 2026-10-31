@@ -847,7 +847,7 @@ export class Hub extends DurableObject {
     });
     return {
       ok: true,
-      me: { email, name: me.name, color: me.color, named: !!me.named, order: JSON.parse(this.getMeta('order:' + email) || '[]') },
+      me: { email, name: me.name, color: me.color, avatar: me.avatar || '', named: !!me.named, order: JSON.parse(this.getMeta('order:' + email) || '[]') },
       users: this.users(),
       sections,
       categories: this.categories(),

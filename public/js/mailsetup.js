@@ -2,6 +2,7 @@
 // above the mailbox says which (or offers to link one), fetches now on request, and starts a new email; the
 // dialogs connect Gmail (an app password) and pick the label. What is linked, and the accounts, are kept by the
 // app on this computer (/app/mail/*, app/mail.js).
+import { icon } from './icons.js';
 import { h, ago, toast, modal } from './ui.js';
 
 const PROVIDER = { gmail: 'Gmail' };
@@ -74,14 +75,14 @@ export function sourceBar(section, { compose } = {}) {
         toast(x.message, true);
       }
       draw();
-    } }, '↻');
+    } }, icon('refresh'));
     bar.replaceChildren(
       h('span', { class: 'ms-icon ' + acc.provider }, PROVIDER[acc.provider].charAt(0)),
       h('span', { class: 'ms-text' }, h('b', {}, link.folderName), h('small', { title: link.error || '' }, `${PROVIDER[acc.provider]} · ${acc.address} · `, link.error ? h('span', { class: 'ms-bad' }, 'could not check') : when)),
       fetchNow,
-      compose ? h('button', { class: 'ms-btn', title: 'New email', onclick: compose }, '✎') : null,
-      h('button', { class: 'ms-btn', title: 'Your signature', onclick: () => signature(acc) }, '✍'),
-      h('button', { class: 'ms-btn', title: 'Link another label, or unlink', onclick: () => link_(section, st).then(draw) }, '⚙'),
+      compose ? h('button', { class: 'ms-btn', title: 'New email', onclick: compose }, icon('pen')) : null,
+      h('button', { class: 'ms-btn', title: 'Your signature', onclick: () => signature(acc) }, icon('signature')),
+      h('button', { class: 'ms-btn', title: 'Link another label, or unlink', onclick: () => link_(section, st).then(draw) }, icon('gear')),
     );
   };
   draw();

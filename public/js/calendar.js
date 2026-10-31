@@ -1,6 +1,7 @@
 // The Calendar: a month at a time. Label a date (and point the label at anything you can reference in the chat: a post-it,
 // a to-do, a report, a message, a day in a chat) and see the deadlines of the open tasks. Each person's own Settings decide
 // how long a priority gives (see settings.js); here the dates are only shown.
+import { icon } from './icons.js';
 import { S, sectionLabel } from './state.js';
 import { api } from './api.js';
 import { h, toast, modal, confirmBox, promptBox, menu, infoButton } from './ui.js';
@@ -88,7 +89,7 @@ export class Calendar {
         const head = h('div', { class: 'cal-num' }, h('span', {}, String(d.getDate())), h('button', { class: 'cal-add', title: 'Label this day', onclick: () => this.add(key) }, '+'));
         cell.append(head);
         for (const t of this.tasks.filter((x) => x.due === key)) {
-          cell.append(h('button', { class: 'cal-chip task ' + (t.priority || 'none'), title: `${t.where}${t.branch ? ' · ' + t.branch : ''}${t.priority ? ' · ' + t.priority + ' priority' : ''}: ${t.text}`, onclick: () => this.open({ k: 'bug', bug: t.id, section: t.section }) }, '⏰ ' + t.text.replace(/\s+/g, ' ').slice(0, 60)));
+          cell.append(h('button', { class: 'cal-chip task ' + (t.priority || 'none'), title: `${t.where}${t.branch ? ' · ' + t.branch : ''}${t.priority ? ' · ' + t.priority + ' priority' : ''}: ${t.text}`, onclick: () => this.open({ k: 'bug', bug: t.id, section: t.section }) }, icon('clock'), ' ' + t.text.replace(/\s+/g, ' ').slice(0, 60)));
         }
         for (const e of this.entries.filter((x) => x.date === key)) cell.append(this.entryEl(e));
         return cell;
@@ -101,7 +102,7 @@ export class Calendar {
     const el = h(
       'div',
       { class: 'cal-chip entry' + (e.ref ? ' linked' : '') },
-      h('button', { class: 'cal-text', title: e.ref ? 'Open what this points at' : text, onclick: () => (e.ref ? this.open(e.ref) : this.edit(e)) }, (e.ref ? '🔗 ' : '') + text.slice(0, 80)),
+      h('button', { class: 'cal-text', title: e.ref ? 'Open what this points at' : text, onclick: () => (e.ref ? this.open(e.ref) : this.edit(e)) }, e.ref ? icon('link') : null, (e.ref ? ' ' : '') + text.slice(0, 80)),
       h('button', { class: 'cal-more', title: 'Change or remove', onclick: (ev) => this.entryMenu(ev, e) }, '⋯'),
     );
     return el;
@@ -131,7 +132,7 @@ export class Calendar {
     const text = h('input', { type: 'text', maxlength: '200', placeholder: 'For example: playtest with the team' });
     const waiting = this.getRefs();
     const link = h('select', {}, h('option', { value: '' }, 'Nothing'), waiting.map((r, i) => h('option', { value: String(i) }, this.describe(r))), h('option', { value: 'day' }, 'A day in a chat…'));
-    const chatSel = h('select', {}, S.sections.map((s) => h('option', { value: s.id }, `${glyph(s.kind)} ${sectionLabel(s.id)}`)));
+    const chatSel = h('select', {}, S.sections.map((s) => h('option', { value: s.id }, sectionLabel(s.id))));
     chatSel.value = this.chatSection() || chatSel.value;
     const dayInp = h('input', { type: 'date', value: date });
     const dayBox = h('div', { hidden: true }, h('label', { style: { marginTop: '12px' } }, 'Which chat'), chatSel, h('label', { style: { marginTop: '12px' } }, 'Which day in it'), dayInp);

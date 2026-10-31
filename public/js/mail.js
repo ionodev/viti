@@ -4,6 +4,7 @@
 // order, with its attachments, and formatted emails shown as they were written (cleaned, in a frame of their
 // own, and with pictures from the internet only when you ask: they can tell the sender you read it).
 // It uses the same data as the report lists (so it is live and backed up in the same way).
+import { icon } from './icons.js';
 import { S } from './state.js';
 import { api } from './api.js';
 import { h, ago, stamp, toast, modal, lightbox } from './ui.js';
@@ -134,7 +135,7 @@ export class Mailbox extends Bugs {
               'button',
               { class: 'mail-row' + (unread ? ' unread' : '') + (convOf(m) === openConv ? ' on' : ''), dataset: { id: m.id }, onclick: () => this.openMail(m.id) },
               h('span', { class: 'from' }, h('span', { class: 'who' }, isSent(m) ? `To ${m.name || m.email}` : m.name || m.email, n > 1 ? h('span', { class: 'cnt' }, String(n)) : null), h('time', { title: stamp(m.ts) }, ago(m.ts))),
-              h('span', { class: 'subj' }, m.files?.length ? h('span', { class: 'clip', title: 'Has attachments' }, '\u{1F4CE}') : null, bare(m.subject) || '(no subject)'),
+              h('span', { class: 'subj' }, m.files?.length ? h('span', { class: 'clip', title: 'Has attachments' }, icon('clip')) : null, bare(m.subject) || '(no subject)'),
               h('span', { class: 'prev' }, preview(m)),
             ),
           )
@@ -313,7 +314,7 @@ export class Mailbox extends Bugs {
         h('label', { class: 'cm-row' }, h('span', {}, 'Subject'), subject),
         text,
         fileList,
-        h('div', { class: 'cm-bar' }, send, h('button', { class: 'btn small ghost', type: 'button', onclick: () => picker.click() }, '\u{1F4CE} Attach files'), picker, h('span', { class: 'grow' }), h('button', { class: 'btn small ghost', onclick: close }, 'Discard')),
+        h('div', { class: 'cm-bar' }, send, h('button', { class: 'btn small ghost', type: 'button', onclick: () => picker.click() }, icon('clip'), ' Attach files'), picker, h('span', { class: 'grow' }), h('button', { class: 'btn small ghost', onclick: close }, 'Discard')),
       ),
     );
     this.root.classList.add('reading');

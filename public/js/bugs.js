@@ -1,5 +1,6 @@
 // The bug reports: three lists (Open, Closed, Trash). Open is oldest first, so what has waited longest is
 // on top; Closed and Trash are newest first. A report can be moved to any list (buttons, or drag it).
+import { icon } from './icons.js';
 import { S, user, imageUrl, emit, on, setBranchView } from './state.js';
 import { api, uploadImage, loadBranches } from './api.js';
 import { h, ago, stamp, toast, undoToast, UNDO_MS, modal, lightbox, menu, highlight } from './ui.js';
@@ -372,7 +373,7 @@ export class Bugs {
   draw() {
     if (this.editing) return; // (a card is being edited: it is drawn again when that is done)
     // with the cards grouped, the heading of the group a card starts
-    const group = (b) => (this.sortBy === 'branch' ? { key: b.branch || '', label: b.branch ? '\u2387 ' + b.branch : 'no branch', same: (r) => r.branch === b.branch } : { key: b.priority || '', label: b.priority ? PRIORITY[b.priority] + ' priority' : 'no priority', same: (r) => r.priority === b.priority });
+    const group = (b) => (this.sortBy === 'branch' ? { key: b.branch || '', label: b.branch ? [icon('branch'), ' ' + b.branch] : 'no branch', same: (r) => r.branch === b.branch } : { key: b.priority || '', label: b.priority ? PRIORITY[b.priority] + ' priority' : 'no priority', same: (r) => r.priority === b.priority });
     for (const c of COLS) {
       if (this.ordBtn[c.key]) this.ordBtn[c.key].textContent = (this.order[c.key] === 'oldest' ? 'Oldest first' : 'Newest first') + ' \u21c5';
       const rows = this.list(c.key);
@@ -431,8 +432,8 @@ export class Bugs {
     return h(
       'span',
       { class: 'card-tools' },
-      h('button', { class: 'ct', title: 'Edit', onclick: () => this.editCard(b) }, '\u270e'),
-      h('button', { class: 'ct', title: 'Reference in the chat', onclick: () => this.reference(b) }, '\u2197'),
+      h('button', { class: 'ct', title: 'Edit', onclick: () => this.editCard(b) }, icon('pen')),
+      h('button', { class: 'ct', title: 'Reference in the chat', onclick: () => this.reference(b) }, icon('arrow')),
       h('button', { class: 'ct more', title: 'More', onclick: more }, '\u22ef'),
     );
   }
@@ -518,7 +519,7 @@ export class Bugs {
     const overdue = b.due && b.status === 'open' && b.due < new Date().toLocaleDateString('sv');
     return [
       h('button', { class: 'chip prio ' + (b.priority || 'none unset'), title: 'The priority: click to change', onclick: (e) => this.pickPriority(e, b) }, b.priority ? PRIORITY[b.priority] : 'no priority'),
-      b.due ? h('button', { class: 'chip due' + (overdue ? ' late' : ''), title: overdue ? 'Past its deadline. Click to change' : 'The deadline: click to change', onclick: () => this.pickDue(b) }, '\u23f0 ' + dueLabel(b.due)) : null,
+      b.due ? h('button', { class: 'chip due' + (overdue ? ' late' : ''), title: overdue ? 'Past its deadline. Click to change' : 'The deadline: click to change', onclick: () => this.pickDue(b) }, icon('clock'), ' ' + dueLabel(b.due)) : null,
     ];
   }
   pickPriority(e, b) {
@@ -552,7 +553,7 @@ export class Bugs {
   // the branch tag of a report or to-do: click it to pick another of the repository's branches
   branchChip(b) {
     const name = b.branch || '';
-    return h('button', { class: 'chip branch' + (name ? '' : ' none unset'), title: 'The branch this is about: click to change', onclick: (e) => this.pickBranch(e, b) }, '\u2387 ', name || 'no branch');
+    return h('button', { class: 'chip branch' + (name ? '' : ' none unset'), title: 'The branch this is about: click to change', onclick: (e) => this.pickBranch(e, b) }, icon('branch'), ' ', name || 'no branch');
   }
   async pickBranch(e, b) {
     const x = e.clientX;

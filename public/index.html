@@ -14,7 +14,7 @@
 </head>
 <body class="loading">
 <header id="topbar">
-  <button id="menu-btn" class="icon" title="Show or hide the section menu">&#9776;</button>
+  <button id="menu-btn" class="icon" title="Show or hide the section menu"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5h16M4 12h16M4 17.5h16"/></svg></span></button>
   <div class="titles"><p class="label" id="kind">Board</p><h1 id="title"></h1></div>
   <a class="brand" href="/home" title="All your projects">
     <span class="cairn-mark"></span>
@@ -22,7 +22,7 @@
   </a>
 </header>
 <aside id="sidebar">
-  <button id="project-btn" class="project-btn" title="Back to all your projects"><span class="pi"></span><span class="pt"><b></b><small></small></span><span class="chev">&#8644;</span></button>
+  <button id="project-btn" class="project-btn" title="Back to all your projects"><span class="pi"></span><span class="pt"><b></b><small></small></span><span class="chev"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h13l-3.5-3.5"/><path d="M18 16H5l3.5 3.5"/></svg></span></span></button>
   <button id="search-btn" class="side-search" title="Search everything (Ctrl+K)"><span>Search…</span><kbd>Ctrl K</kbd></button>
   <div class="branchbar" title="Which branch of the repository you are looking at: its page in each board, and its reports"><label for="branch-view">Branch</label><select id="branch-view"></select></div>
   <div id="projectcat"></div>
@@ -35,9 +35,9 @@
   <div id="custom"></div>
   <div class="side-tools"><button id="add-category" class="link">+ New category</button></div>
   <div class="side-foot">
-    <button id="me" class="me" title="Change your name"></button>
-    <button id="settings" class="me" title="Settings">&#9881; Settings</button>
-    <button id="keys-btn" class="me" title="Keyboard shortcuts (?)">&#9000; Shortcuts</button>
+    <button id="me" class="me" title="Your GitHub account"></button>
+    <button id="settings" class="me" title="Settings"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 3v2.4M12 18.6V21M3 12h2.4M18.6 12H21M5.6 5.6l1.7 1.7M16.7 16.7l1.7 1.7M5.6 18.4l1.7-1.7M16.7 7.3l1.7-1.7"/></svg></span> Settings</button>
+    <button id="keys-btn" class="me" title="Keyboard shortcuts (?)"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6.5 10h.01M10 10h.01M14 10h.01M17.5 10h.01M7.5 14h9" stroke-width="1.9"/></svg></span> Shortcuts</button>
     <button id="sync" class="sync" title="GitHub backup"></button>
   </div>
 </aside>

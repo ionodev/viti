@@ -62,8 +62,8 @@ export async function openProject({ dbFile, env, user }) {
         });
       });
     },
-    // who you are here, from your GitHub account: your GitHub picture always, and your GitHub username as your
-    // name, unless you chose another one yourself (the welcome question is then not asked)
+    // who you are here: your GitHub account, as on the home screen (its name, or the username if it has none,
+    // and its picture), every time the project is opened
     async profile({ login = '', name = '', avatar = '' } = {}) {
       hub.ensureUser(user.email);
       const r = hub.one('SELECT name, named, COALESCE(avatar, \'\') AS avatar FROM users WHERE email=?', user.email);
@@ -72,9 +72,10 @@ export async function openProject({ dbFile, env, user }) {
         hub.run('UPDATE users SET avatar=? WHERE email=?', avatar, user.email);
         changed = true;
       }
-      // (a name Viti filled in from GitHub before, the display name, becomes the username)
-      if (login && (!r.named || (name && r.name === name)) && r.name !== login) {
-        hub.run('UPDATE users SET name=?, named=1 WHERE email=?', login, user.email);
+      // (always your GitHub name, as on the home screen: the username if you have none)
+      const shown = name || login;
+      if (shown && r.name !== shown) {
+        hub.run('UPDATE users SET name=?, named=1 WHERE email=?', shown, user.email);
         changed = true;
       }
       if (changed) {

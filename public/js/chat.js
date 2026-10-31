@@ -1,6 +1,7 @@
 // The chat of the open section: markdown messages that can point at things (a quoted passage, an image or
 // note on a board, another message, a bug report), and the "Quote in chat" button that appears when you
 // select words anywhere.
+import { icon, kindIcon } from './icons.js';
 import { S, user, sectionById, sectionLabel, imageUrl, emit } from './state.js';
 import { api } from './api.js';
 import { h, $, avatar, clock, dayLabel, stamp, toast, lightbox, menu } from './ui.js';
@@ -8,7 +9,8 @@ import { renderInto } from './md.js';
 import { emojiPicker } from './emoji.js';
 
 // what goes before a section's name: # a board, ! a list of reports, a star for the to-do list
-export const glyph = (kind) => (kind === 'bugs' ? '!' : kind === 'todo' ? '\u2605' : kind === 'overview' ? '\u25ce' : kind === 'progress' ? '\u25b3' : kind === 'mail' ? '\u2709' : kind === 'calendar' ? '\u25a6' : kind === 'note' ? '\u270e' : kind === 'pdf' ? '\u25a4' : '#');
+// (the kinds of section have icons now, icons.js: kindIcon; in plain text no symbol at all)
+export const glyph = () => '';
 const KIND = { note: 'Post-it', text: 'Text', image: 'Image', group: 'Group', draw: 'Drawing', doc: 'Note' };
 
 // a card for one reference: in a message, or (with onRemove) among the chips above the box
@@ -79,7 +81,7 @@ export class Chat {
     this.chips = h('div', { class: 'chips' });
     this.input = h('textarea', { rows: '1', placeholder: 'Write a message… (markdown works)', maxlength: '8000' });
     this.send = h('button', { class: 'btn small', onclick: () => this.submit() }, 'Send');
-    this.emojiBtn = h('button', { class: 'icon emoji-btn', type: 'button', title: 'Emoji', onclick: () => emojiPicker(this.emojiBtn, (e) => this.insert(e)) }, '\u{1F642}');
+    this.emojiBtn = h('button', { class: 'icon emoji-btn', type: 'button', title: 'Emoji', onclick: () => emojiPicker(this.emojiBtn, (e) => this.insert(e)) }, icon('smile'));
     this.mentionBox = h('div', { class: 'menu mention-pop', hidden: true });
     this.root.append(h('div', { class: 'chat-head' }, h('p', { class: 'label' }, 'Chat'), this.title), this.msgs, h('div', { class: 'composer' }, this.chips, this.mentionBox, h('div', { class: 'row' }, this.input, this.emojiBtn, this.send)));
     this.input.addEventListener('keydown', (e) => {
@@ -187,7 +189,7 @@ export class Chat {
     const away = (ev) => !el.contains(ev.target) && !this.title.contains(ev.target) && close();
     const onKey = (ev) => ev.key === 'Escape' && close();
     const kids = (id) => S.sections.filter((s) => s.parent === id && (!S.branchView || s.branch === S.branchView));
-    const item = (s, sub) => h('button', { class: (s.id === this.section ? 'on' : '') + (sub ? ' sub' : ''), onclick: () => choose(s) }, `${sub && s.kind === 'board' ? '\u2387' : glyph(s.kind)} ${s.name}${s.unread ? ` (${s.unread})` : ''}`, !sub && kids(s.id).length ? h('span', { class: 'more' }, expanded === s.id ? '\u25be' : '\u25b8') : null);
+    const item = (s, sub) => h('button', { class: (s.id === this.section ? 'on' : '') + (sub ? ' sub' : ''), onclick: () => choose(s) }, h('span', { class: 'sw-name' }, sub && s.kind === 'board' ? icon('branch') : kindIcon(s.kind), `${s.name}${s.unread ? ` (${s.unread})` : ''}`), !sub && kids(s.id).length ? h('span', { class: 'more' }, expanded === s.id ? '\u25be' : '\u25b8') : null);
     const choose = (s) => {
       const has = !s.parent && kids(s.id).length;
       if (s.id !== this.section) this.pick?.(s.id);
@@ -209,7 +211,7 @@ export class Chat {
   retitle() {
     if (this.section) {
       const s = sectionById(this.section);
-      this.title.textContent = `${glyph(s?.kind)} ${sectionLabel(this.section)} \u25be`;
+      this.title.replaceChildren(kindIcon(s?.kind), ` ${sectionLabel(this.section)} \u25be`);
     }
   }
   async load() {

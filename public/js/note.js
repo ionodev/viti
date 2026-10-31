@@ -1,6 +1,7 @@
 // A Note: a page of markdown to write in (a subsection of a board). It takes the room of the canvas: a plain editor with
 // a few formatting buttons, and a button on the top bar that shows how it will look (with equations written in LaTeX:
 // $x^2$ in a line, $$ ... $$ as a block). Saved as you type, and live for everyone who has the note open.
+import { icon } from './icons.js';
 import { S } from './state.js';
 import { api } from './api.js';
 import { h, toast } from './ui.js';
@@ -42,7 +43,7 @@ export class NoteView {
       fmt('☐', 'Task list', () => this.prefix('- [ ] ')),
       fmt('</>', 'Code', () => this.wrap('`', '`')),
       fmt('“', 'Quote', () => this.prefix('> ')),
-      fmt('🔗', 'Link', () => this.wrap('[', '](https://)')),
+      fmt(icon('link'), 'Link', () => this.wrap('[', '](https://)')),
       fmt('∑', 'Equation in the line: $...$', () => this.wrap('$', '$')),
       fmt('∫', 'Equation as a block: $$...$$', () => this.wrap('\n$$\n', '\n$$\n')),
       h('span', { class: 'grow' }),
