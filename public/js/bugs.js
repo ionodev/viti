@@ -631,10 +631,11 @@ export class Bugs {
       this.input.addEventListener('drop', (e) => take(e.dataTransfer?.files || []) && e.preventDefault());
       this.input.title = 'Paste or drop screenshots here too';
     }
-    // the branch a new one is about: the latest by default
+    // the branch a new one is about (the latest by default) and its priority (none by default)
     await loadBranches();
     this.addBranch = S.branches.list.length ? this.branchSelect() : null;
-    this.cols.open.insertBefore(h('div', { class: 'todo-form' }, this.input, this.shotBox, this.addBranch), this.bodies.open);
+    this.addPrio = h('select', { class: 'branch-select prio-select', title: 'The priority (a deadline comes with it, as set in Settings)' }, h('option', { value: '' }, 'No priority'), Object.entries(PRIORITY).map(([k, label]) => h('option', { value: k }, label)));
+    this.cols.open.insertBefore(h('div', { class: 'todo-form' }, this.input, this.shotBox, h('div', { class: 'add-opts' }, this.addPrio, this.addBranch)), this.bodies.open);
   }
   drawShots() {
     this.shotBox.hidden = !this.pending.length;
@@ -649,16 +650,19 @@ export class Bugs {
     const message = this.input.value.trim();
     if (!message) return;
     const shots = this.pending;
+    const priority = this.addPrio.value;
     this.input.value = '';
+    this.addPrio.value = '';
     this.pending = [];
     this.drawShots();
     this.fitAdd();
     try {
       const images = [];
       for (const f of shots) images.push((await uploadImage(f)).id);
-      await api('POST', '/api/bugs', { message, images, section: this.section, branch: this.addBranch?.value });
+      await api('POST', '/api/bugs', { message, images, section: this.section, branch: this.addBranch?.value, priority, due: priority ? deadlineFor(priority) : '' });
     } catch (e) {
       this.input.value = message;
+      this.addPrio.value = priority;
       this.pending = shots;
       this.drawShots();
       this.fitAdd();

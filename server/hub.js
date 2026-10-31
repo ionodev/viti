@@ -1038,7 +1038,12 @@ export class Hub extends DurableObject {
         const images = (Array.isArray(b.images) ? b.images : []).filter((i) => /^[a-f0-9]{24}$/.test(String(i)) && this.one('SELECT id FROM images WHERE id=?', i)).slice(0, 5);
         const branch = this.cleanBranch(b.branch) || (await this.branches()).latest;
         if (branch.toLowerCase() === 'viti' && this.section(b.section || 'bugs')?.kind !== 'todo') return fail(400, 'branch', 'The viti tag is only for the to-do list.');
-        const row = this.insertBug({ name: u.name, email, ua: request.headers.get('user-agent'), page: '', message, images, source: 'manual', section: b.section, branch });
+        let row = this.insertBug({ name: u.name, email, ua: request.headers.get('user-agent'), page: '', message, images, source: 'manual', section: b.section, branch });
+        // a priority (and the deadline it brings) can be given straight away
+        if (['high', 'medium', 'low'].includes(b.priority)) {
+          this.run('UPDATE bugs SET priority=?, due=? WHERE id=?', b.priority, /^\d{4}-\d{2}-\d{2}$/.test(String(b.due || '')) ? b.due : '', row.id);
+          row = this.one('SELECT * FROM bugs WHERE id=?', row.id);
+        }
         const bug = this.bugOut(row);
         this.bcAll({ t: 'bug', bug });
         return json({ ok: true, id: bug.id });
