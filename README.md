@@ -1,68 +1,47 @@
 # Viti
 
-**A shared workspace for your project on GitHub.** Pick a repository and Viti gives it boards to think on, a chat, a to-do list, bug reports, a calendar and a mailbox, all in one window. Everything you add is backed up to the repository itself, so it stays with your project.
+**A shared workspace for your project on GitHub.** Boards, chat, to-dos, bug reports, a calendar and a mailbox for any repository, in one window. Everything is backed up to the repository itself, and your team sees each other's changes live.
 
-Viti is an app for Windows, Mac and Linux. It is free and open source.
+Free and open source, for Windows, Mac and Linux.
 
-## Getting started
+![A board with notes and the team chat](docs/board.png)
 
-1. **Download** the latest version from the [Releases](https://github.com/ionodev/viti/releases) page: for Windows the installer (`Viti-Setup-….exe`) or the portable version that runs without installing; for a Mac the `.dmg` (`arm64` for Apple silicon, `x64` for Intel); for Linux the `.AppImage` (any distribution) or the `.deb` (Ubuntu, Debian).
-2. **Open it.** The app is not signed with a paid certificate, so the first time:
-   - **Windows** may say *"Windows protected your PC"*. Click **More info → Run anyway**.
-   - **Mac**: drag Viti to Applications and open it. macOS says it could not verify Viti: click **Done**, then **System Settings › Privacy & Security › Open Anyway**.
-   - **Linux**: make the AppImage runnable (`chmod +x`) and open it, or install the .deb with `sudo apt install ./Viti-*.deb`.
-3. **Sign in with GitHub.** Viti shows a short code and opens GitHub in your browser. Enter the code there and approve Viti.
-4. **Pick a repository** from the list of the ones you can write to. That's your first project.
+## Install
 
-You can add as many projects as you like, and switch between them on the home screen.
+Download the latest version from [Releases](https://github.com/ionodev/viti/releases):
 
-**Updates come by themselves.** The installed Viti downloads a new version in the background and puts it in the next time it starts (or right away, from the bar at the top). The Linux AppImage updates itself the same way. The portable version, the Mac version and the .deb tell you when there is a new one to download.
+| | File | First start |
+|---|---|---|
+| **Windows** | `Viti-Setup-….exe` (or `…-portable.exe`) | *Windows protected your PC* › **More info › Run anyway** |
+| **Mac** | `…-mac-arm64.dmg` (Apple silicon) or `…-mac-x64.dmg` (Intel) | Drag to Applications, open, then **System Settings › Privacy & Security › Open Anyway** |
+| **Linux** | `….AppImage` (any distribution) or `….deb` | `chmod +x` the AppImage, or `sudo apt install ./Viti-*.deb` |
 
-## What you can do
+Then **sign in with GitHub** and **pick a repository**. Viti updates itself (the Mac app, the portable version and the .deb show a download link instead).
 
-- **Boards.** An endless canvas for each section: sticky notes, text, images, drawings, highlighted words, groups, and notes with headings and equations. Drag, zoom and arrange things as you think.
-- **Chat.** Every section has its own chat. Quote a piece of text from a board, or point to a note, a task or a message, and it links straight to it. Write *@name* to get someone's attention.
-- **To do.** Write a task and press Enter. Give it a priority (and with it a deadline), tag it with a branch of your repository, and tick it off when it's done.
-- **Reports.** Lists for bugs or anything else you collect, with screenshots. Open, Closed and Trash, side by side.
-- **Calendar.** Deadlines show up by themselves, and you can label any day and point it at anything in the project.
-- **Progress.** Every finished task adds a stone to a cairn that keeps growing. Click a stone to go back to the task it stands for.
-- **Overview.** A map of what refers to what across the project.
-- **Mail.** Link a mailbox to a Gmail label and the emails in it come into Viti, where the whole project can read them. Reply or write new emails right from Viti.
-- **Search everything** with **Ctrl+K**, and press **?** to see all keyboard shortcuts.
-- **Make it yours.** Light or dark, and any accent colour you like (Settings, or *Appearance* on the home screen).
+## What's in it
+
+- **Boards:** an endless canvas for notes, text, images and drawings, one per section.
+- **Chat:** a chat per section; quote anything on a board, mention people with *@name*.
+- **To do and reports:** priorities, deadlines and branch tags; lists for bugs or anything else.
+- **Calendar, progress and overview:** deadlines at a glance, and what refers to what.
+- **Mail:** link a Gmail label and read and answer the project's email together.
+- **Search** everything with **Ctrl+K** (**⌘K** on a Mac).
+
+| | |
+|---|---|
+| ![The to-do list](docs/todo.png) | ![The calendar](docs/calendar.png) |
+| ![Your projects](docs/home.png) | |
 
 ## Your data
 
-- **On your computer:** each project is kept in your Windows user folder, so Viti is fast and works offline too.
-- **On GitHub:** everything is also backed up to your repository, in a branch of its own. Your code and your other branches are never touched. Opening the project on another computer brings it all back.
-- **Your sign-ins** (GitHub, and the Gmail app password) stay on your computer, encrypted, and are only ever sent to GitHub and Google.
-- **Mail and public repositories:** because everything in a project is backed up to the repository, Viti does not let you link a mailbox in a public repository, where anyone could read it.
+Each project is kept on your computer (fast, works offline) and backed up to its repository on GitHub, in a branch of its own; your code is never touched. Teammates' changes come in every few seconds and are merged with yours. Sign-ins stay encrypted on your computer. Mail can't be linked in a public repository.
 
-## Mail with Gmail
+**Gmail:** turn on 2-Step Verification, create an app password called "Viti", make a Gmail label for the project's mail, then in Viti add a **Mailbox** and click **Link a label**.
 
-1. Turn on 2-Step Verification in your Google account, then create an **app password** (Google account › Security › App passwords). Call it "Viti".
-2. In Gmail, make a **label** (for example *Viti*) and a filter that puts the right emails in it.
-3. In Viti, add a **Mailbox** to your project, click **Link a label**, connect your Gmail with the app password, and pick the label.
+**GitHub organisations** may need to approve Viti once (organisation settings › Third-party access).
 
-New mail comes in every couple of minutes while Viti is open. Emails you send yourself appear under **Sent**. Viti never moves or deletes anything in your Gmail.
+## Feedback and building
 
-## Good to know
+Problems or ideas: open an [issue](https://github.com/ionodev/viti/issues).
 
-- **Working together:** several people can use the same project, but for now not at the same time. Each computer keeps its own copy and backs it up, and the last one to back up wins. Live syncing between computers is on its way.
-- **Organisations on GitHub** may have to approve Viti once before their repositories show up (organisation settings › Third-party access).
-
-## Problems and ideas
-
-Something not working, or an idea for Viti? Open an [issue](https://github.com/ionodev/viti/issues).
-
-## Building it yourself
-
-Viti is an Electron app. With [Node.js](https://nodejs.org) installed:
-
-```
-npm install
-npm start
-npm run dist
-```
-
-`npm start` runs it, and `npm run dist` makes the Windows installer and portable version in `dist/`.
+To build it yourself, with [Node.js](https://nodejs.org): `npm install`, then `npm start` to run it or `npm run dist` to build it. Releases are built by GitHub Actions ([RELEASING.md](RELEASING.md)).
