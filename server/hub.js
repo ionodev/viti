@@ -528,7 +528,7 @@ export class Hub extends DurableObject {
       if (!r || typeof r !== 'object') continue;
       if (r.k === 'quote') out.push({ k: 'quote', section: clip(r.section, 60), item: clip(r.item, 24), text: clip(r.text, 600), label: clip(r.label, 60) });
       else if (r.k === 'item') out.push({ k: 'item', section: clip(r.section, 60), item: clip(r.item, 24), kind: clip(r.kind, 10), img: /^[a-f0-9]{24}$/.test(String(r.img)) ? r.img : '', text: clip(r.text, 300), label: clip(r.label, 60) });
-      else if (r.k === 'msg') out.push({ k: 'msg', section: clip(r.section, 60), msg: Math.round(num(r.msg, 0, 1e12)), text: clip(r.text, 600), who: clip(r.who, 60) });
+      else if (r.k === 'msg') out.push({ k: 'msg', section: clip(r.section, 60), msg: Math.round(num(r.msg, 0, 9e15)), text: clip(r.text, 600), who: clip(r.who, 60) });
       else if (r.k === 'bug') out.push({ k: 'bug', bug: clip(r.bug, 24), section: clip(r.section, 60), text: clip(r.text, 200) });
       else if (r.k === 'day' && /^\d{4}-\d{2}-\d{2}$/.test(String(r.day))) out.push({ k: 'day', section: clip(r.section, 60), day: r.day, from: Math.round(num(r.from, 0, 1e13, 0)), text: clip(r.text, 200) });
     }
@@ -1109,7 +1109,7 @@ export class Hub extends DurableObject {
           return json({ ok: true, id: row?.id || 0 });
         }
         if (method === 'GET') {
-          const before = Math.round(num(url.searchParams.get('before'), 0, 1e12, 0)) || 1e12;
+          const before = Math.round(num(url.searchParams.get('before'), 0, 9e15, 0)) || 9e15; // (ids are time-based since 0.6.0: up to ~2e15)
           const limit = Math.round(num(url.searchParams.get('limit'), 1, 100, 50));
           const rows = this.q('SELECT * FROM messages WHERE section=? AND id<? ORDER BY id DESC LIMIT ?', m[1], before, limit).reverse();
           return json({ ok: true, messages: rows.map((r) => this.msgOut(r)), more: rows.length === limit });
@@ -1124,7 +1124,7 @@ export class Hub extends DurableObject {
       }
       if ((m = p.match(/^\/api\/chat\/([a-z0-9-]+)\/read$/)) && method === 'POST') {
         const b = await this.readBody(request);
-        const id = Math.round(num(b.id, 0, 1e12));
+        const id = Math.round(num(b.id, 0, 9e15));
         this.run('INSERT INTO reads (email, section, last_id) VALUES (?, ?, ?) ON CONFLICT(email, section) DO UPDATE SET last_id=MAX(last_id, excluded.last_id)', email, m[1], id);
         return json({ ok: true });
       }
