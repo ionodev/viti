@@ -4,21 +4,19 @@
 
 Free and open source, for Windows, Mac and Linux.
 
-**Download:** [Windows](https://github.com/ionodev/viti/releases/latest/download/Viti-Windows-Setup.exe) · [Mac (Apple silicon)](https://github.com/ionodev/viti/releases/latest/download/Viti-Mac-AppleSilicon.dmg) · [Mac (Intel)](https://github.com/ionodev/viti/releases/latest/download/Viti-Mac-Intel.dmg) · [Linux (AppImage)](https://github.com/ionodev/viti/releases/latest/download/Viti-Linux.AppImage) · [Linux (.deb)](https://github.com/ionodev/viti/releases/latest/download/Viti-Linux.deb)
+**Download:** [Windows](https://github.com/ionodev/viti/releases/latest/download/Viti-Windows-Setup.exe) · [Mac](https://github.com/ionodev/viti/releases/latest/download/Viti-Mac.dmg) · [Linux](https://github.com/ionodev/viti/releases/latest/download/Viti-Linux.AppImage)
 
 ![A board with notes and the team chat](docs/board.png)
 
 ## Install
 
-Use the links above, or pick a file from [Releases](https://github.com/ionodev/viti/releases):
+Download the one for your system with the links above, then:
 
-| | File | First start |
-|---|---|---|
-| **Windows** | `Viti-Setup-….exe` (or `…-portable.exe`) | *Windows protected your PC* › **More info › Run anyway** |
-| **Mac** | `…-mac-arm64.dmg` (Apple silicon) or `…-mac-x64.dmg` (Intel) | Drag to Applications, open, then **System Settings › Privacy & Security › Open Anyway** |
-| **Linux** | `….AppImage` (any distribution) or `….deb` | `chmod +x` the AppImage, or `sudo apt install ./Viti-*.deb` |
+- **Windows:** run it. If Windows says *Windows protected your PC*, click **More info › Run anyway**.
+- **Mac** (Apple silicon and Intel): drag Viti to Applications and open it. The first time, macOS can't verify it: click **Done**, then **System Settings › Privacy & Security › Open Anyway**.
+- **Linux** (any distribution): make the file runnable (`chmod +x Viti-Linux.AppImage`, or Properties › Allow executing) and open it.
 
-Then **sign in with GitHub** and **pick a repository**. Viti updates itself (the Mac app, the portable version and the .deb show a download link instead).
+Then **sign in with GitHub** and **pick a repository**. Viti updates itself (on a Mac it tells you when a new version is out). A portable Windows version and a .deb are also on [Releases](https://github.com/ionodev/viti/releases).
 
 ## What's in it
 
