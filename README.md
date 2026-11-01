@@ -34,7 +34,7 @@ Then **sign in with GitHub** and **pick a repository**. Viti updates itself (the
 
 ## Your data
 
-Each project is kept on your computer (fast, works offline) and backed up to its repository on GitHub, in a branch of its own; your code is never touched. Teammates' changes come in every few seconds and are merged with yours. Sign-ins stay encrypted on your computer. Mail can't be linked in a public repository.
+Each project is kept on your computer (fast, works offline) and backed up to its repository on GitHub, in a branch of its own; your code is never touched. Teammates' changes come in within about half a minute and are merged with yours, so you can all work at the same time. Sign-ins stay encrypted on your computer. Mail can't be linked in a public repository.
 
 **Gmail:** turn on 2-Step Verification, create an app password called "Viti", make a Gmail label for the project's mail, then in Viti add a **Mailbox** and click **Link a label**.
 
