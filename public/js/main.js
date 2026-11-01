@@ -4,7 +4,7 @@ import { icon, kindIcon } from './icons.js';
 import { S, emit, on, user, sectionById, setBranchView } from './state.js';
 import { api, Live, loadBranches, uploadPdf } from './api.js';
 import { sectionLabel } from './state.js';
-import { h, $, avatar, toast, menu, modal, promptBox, confirmBox, ago, typing } from './ui.js';
+import { h, $, avatar, toast, menu, modal, promptBox, confirmBox, ago, typing, MAC, keys } from './ui.js';
 import { openSearch, openShortcuts } from './search.js';
 import { firstTips } from './tips.js';
 import { updateBar } from './update.js';
@@ -51,6 +51,8 @@ async function boot() {
   // (on a narrow screen the chat covers the page, so it starts shut there; the remembered choice is for wide screens)
   if (narrow() || localStorage.getItem('hub.chat') === 'off') document.body.classList.add('nochat');
   if (localStorage.getItem('hub.side') === 'off') document.body.classList.add('noside');
+  // (the search button's shortcut, written in the page itself)
+  if (MAC) for (const el of [$('#search-btn'), $('#search-btn kbd')]) el && (el.title ? (el.title = keys(el.title)) : (el.textContent = keys(el.textContent)));
   route();
   if (!S.me.named) welcome();
   else firstTips();

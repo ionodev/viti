@@ -24,7 +24,7 @@ export async function openAbout() {
     h(
       'div',
       { class: 'about-rows' },
-      row('Your data', a.dataDir || 'In your Windows user folder.', a.canOpen ? btn('Open folder', () => reveal('data')) : null),
+      row('Your data', a.dataDir || 'On this computer.', a.canOpen ? btn('Open folder', () => reveal('data')) : null),
       a.logFile ? row('The log', 'What Viti did, and anything that went wrong. Handy when you report a problem.', a.canOpen ? btn('Open the log', () => reveal('log')) : null) : null,
       await updateRow(row, btn),
       row('Problems and ideas', 'Tell us on GitHub.', btn('Report a problem', () => window.open(`${repo}/issues/new`))),

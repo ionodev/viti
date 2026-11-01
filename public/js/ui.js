@@ -3,10 +3,15 @@ export const $ = (s, r = document) => r.querySelector(s);
 export const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 
 // h('div', { class: 'x', onclick: fn }, child, 'text', ...): an element
+// on a Mac the shortcuts are written with ⌘ (Ctrl K -> ⌘K)
+export const MAC = /Mac/.test(navigator.platform);
+export const keys = (s) => (MAC && typeof s === 'string' ? s.replace(/Ctrl[ +]?/g, '⌘') : s);
+
 export function h(tag, props = {}, ...kids) {
   const el = document.createElement(tag);
-  for (const [k, v] of Object.entries(props || {})) {
+  for (let [k, v] of Object.entries(props || {})) {
     if (v == null || v === false) continue;
+    if (k === 'title') v = keys(v);
     if (k === 'class') el.className = v;
     else if (k === 'style' && typeof v === 'object') for (const [p, val] of Object.entries(v)) p.startsWith('--') ? el.style.setProperty(p, val) : (el.style[p] = val);
     else if (k === 'dataset') Object.assign(el.dataset, v);
@@ -14,7 +19,7 @@ export function h(tag, props = {}, ...kids) {
     else if (v === true) el.setAttribute(k, '');
     else el.setAttribute(k, v);
   }
-  for (const kid of kids.flat()) if (kid != null && kid !== false) el.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
+  for (const kid of kids.flat()) if (kid != null && kid !== false) el.append(kid.nodeType ? kid : document.createTextNode(keys(String(kid))));
   // (a button that is only an icon is named for screen readers by its tooltip)
   if (tag === 'button' && el.title && !el.hasAttribute('aria-label') && !/\w/.test(el.textContent)) el.setAttribute('aria-label', el.title);
   return el;

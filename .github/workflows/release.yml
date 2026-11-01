@@ -1,0 +1,62 @@
+# Builds Viti for Windows and for Mac (on GitHub's own computers: a Mac build needs a Mac), and publishes a
+# release when a version tag (v1.2.3) is pushed. A push to main only builds, to show that both still build;
+# the files are kept for a few days under the run's "Artifacts".
+name: Build and release
+
+on:
+  push:
+    tags: ['v*']
+    branches: [main]
+    paths: ['app/**', 'server/**', 'public/**', 'build/**', 'package.json', 'package-lock.json', '.github/**']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            name: windows
+            args: --win nsis portable
+          - os: macos-latest
+            name: mac
+            args: --mac dmg
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx electron-builder ${{ matrix.args }} --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: viti-${{ matrix.name }}
+          retention-days: 7
+          if-no-files-found: error
+          path: |
+            dist/*.exe
+            dist/*.dmg
+            dist/*.blockmap
+            dist/latest*.yml
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: out
+          merge-multiple: true
+      - run: gh release create "$GITHUB_REF_NAME" out/* --title "Viti ${GITHUB_REF_NAME#v}" --notes-file .github/release-notes.md
+        env:
+          GH_TOKEN: ${{ github.token }}

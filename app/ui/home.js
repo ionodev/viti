@@ -410,9 +410,17 @@ function settings() {
     ...appearanceControls(),
     state.desktop
       ? [
-          h('p', { class: 'label' }, 'Windows'),
-          toggle('tray', 'Keep Viti running in the tray', 'Closing the window leaves Viti in the notification area, so new mail still comes in. Quit it from the tray icon.'),
-          toggle('startup', 'Start with Windows', 'Viti starts when you sign in to Windows (into the tray, when that is on).'),
+          ...(state.mac
+            ? [
+                h('p', { class: 'label' }, 'Mac'),
+                toggle('tray', 'Show Viti in the menu bar', 'An icon at the top of the screen, to open Viti or a recent project.'),
+                toggle('startup', 'Open at login', 'Viti opens in the background when you log in to your Mac, so new mail still comes in.'),
+              ]
+            : [
+                h('p', { class: 'label' }, 'Windows'),
+                toggle('tray', 'Keep Viti running in the tray', 'Closing the window leaves Viti in the notification area, so new mail still comes in. Quit it from the tray icon.'),
+                toggle('startup', 'Start with Windows', 'Viti starts when you sign in to Windows (into the tray, when that is on).'),
+              ]),
           h('p', { class: 'label' }, 'Where your projects are kept'),
           h('div', { class: 'set-where' }, where, move),
           h('small', { class: 'set-note' }, 'The copies on this computer. Everything is also backed up to each repository on GitHub.'),

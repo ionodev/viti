@@ -2,18 +2,20 @@
 
 **A shared workspace for your project on GitHub.** Pick a repository and Viti gives it boards to think on, a chat, a to-do list, bug reports, a calendar and a mailbox, all in one window. Everything you add is backed up to the repository itself, so it stays with your project.
 
-Viti is a Windows app. It is free and open source.
+Viti is an app for Windows and Mac. It is free and open source.
 
 ## Getting started
 
-1. **Download** the latest version from the [Releases](https://github.com/ionodev/viti/releases) page: the installer (`Viti-Setup-….exe`), or the portable version that runs without installing.
-2. **Open it.** Windows may say *"Windows protected your PC"* the first time, because the app is not signed with a paid certificate. Click **More info → Run anyway**.
+1. **Download** the latest version from the [Releases](https://github.com/ionodev/viti/releases) page: for Windows the installer (`Viti-Setup-….exe`) or the portable version that runs without installing; for a Mac the `.dmg` (`arm64` for Apple silicon, `x64` for Intel).
+2. **Open it.** The app is not signed with a paid certificate, so the first time:
+   - **Windows** may say *"Windows protected your PC"*. Click **More info → Run anyway**.
+   - **Mac**: drag Viti to Applications and open it. macOS says it could not verify Viti: click **Done**, then **System Settings › Privacy & Security › Open Anyway**.
 3. **Sign in with GitHub.** Viti shows a short code and opens GitHub in your browser. Enter the code there and approve Viti.
 4. **Pick a repository** from the list of the ones you can write to. That's your first project.
 
 You can add as many projects as you like, and switch between them on the home screen.
 
-**Updates come by themselves.** The installed Viti downloads a new version in the background and puts it in the next time it starts (or right away, from the bar at the top). The portable version tells you when there is a new one to download.
+**Updates come by themselves.** The installed Viti downloads a new version in the background and puts it in the next time it starts (or right away, from the bar at the top). The portable version and the Mac version tell you when there is a new one to download.
 
 ## What you can do
 

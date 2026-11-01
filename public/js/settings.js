@@ -117,7 +117,7 @@ export async function openSettings() {
         const ok = 'Notification' in window && (Notification.permission === 'granted' || (await Notification.requestPermission()) === 'granted');
         if (!ok) {
           box.checked = false;
-          return toast('Windows did not allow notifications from Viti. You can allow them in Settings › System › Notifications.', true);
+          return toast('Notifications from Viti are turned off on this computer. Allow them in its settings (Windows: Settings › System › Notifications; Mac: System Settings › Notifications).', true);
         }
       }
       setSetting(key, box.checked);
@@ -136,7 +136,7 @@ export async function openSettings() {
     h('div', { class: 'setvol' }, h('span', {}, 'Volume'), vol, h('button', { class: 'btn small ghost', onclick: () => chime(true) }, 'Test')),
     row('soundOnlyAway', 'Only play it when I am somewhere else', 'Stay quiet while the Viti window is the one in front.'),
     h('p', { class: 'label' }, 'Alerts'),
-    row('desktop', 'Windows notifications', 'A notification from Windows when Viti is in the background.'),
+    row('desktop', 'Desktop notifications', 'A notification on your screen when Viti is in the background.'),
     row('titleCount', 'Show the unread count in the window title', 'For example: (3) Viti'),
     h('p', { class: 'label' }, 'Look and feel'),
     row('animate', 'Slide the menus', 'Turn off for instant opening and closing.'),

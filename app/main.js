@@ -34,13 +34,15 @@ let quitting = false;
 const exe = process.env.PORTABLE_EXECUTABLE_FILE || process.execPath;
 // "--open=<project id>" (the jump list, the tray) and "--hidden" (started with Windows, into the tray)
 const openArg = (argv) => (argv.find((a) => a.startsWith('--open=')) || '').slice(7);
+const mac = process.platform === 'darwin';
 const startHidden = process.argv.includes('--hidden');
 
 // ---- updates: new versions are GitHub Releases of ionodev/viti. The installed Viti downloads one by itself and
 // puts it in when it restarts (or at once, when you choose); the portable one cannot change itself, so it only
 // says that there is one, and where to get it.
 const REPO = 'ionodev/viti';
-const portable = !!process.env.PORTABLE_EXECUTABLE_FILE;
+// (the Mac version is not signed by Apple, so it cannot replace itself either)
+const portable = !!process.env.PORTABLE_EXECUTABLE_FILE || process.platform === 'darwin';
 const upd = { state: 'idle', version: '', percent: 0, error: '', checked: 0, portable, url: `https://github.com/${REPO}/releases/latest` };
 let onUpdate = () => {};
 const setUpd = (x) => (Object.assign(upd, x), onUpdate(upd));
@@ -61,7 +63,8 @@ async function checkUpdates() {
     if (!r.ok) throw new Error(`GitHub answered ${r.status}.`);
     const j = await r.json();
     const v = String(j.tag_name || '').replace(/^v/, '');
-    const exe = (j.assets || []).find((a) => /portable\.exe$/i.test(a.name));
+    const mine = process.platform === 'darwin' ? new RegExp(`mac-${process.arch}\\.dmg$`, 'i') : /portable\.exe$/i;
+    const exe = (j.assets || []).find((a) => mine.test(a.name));
     setUpd(newer(v, app.getVersion()) ? { state: 'available', version: v, url: exe?.browser_download_url || j.html_url } : { state: 'none' });
   } catch (e) {
     // (no release yet is not a problem worth showing)
@@ -125,7 +128,7 @@ async function start() {
   };
   // what the app's server needs from Windows: start with it, the tray and the jump list, and two dialogs
   const desktop = {
-    setStartup: (on) => app.setLoginItemSettings({ openAtLogin: !!on, path: exe, args: ['--hidden'] }),
+    setStartup: (on) => app.setLoginItemSettings(mac ? { openAtLogin: !!on } : { openAtLogin: !!on, path: exe, args: ['--hidden'] }),
     changed: ({ recent, prefs }) => {
       jumpList(recent);
       trayIcon(prefs.tray, recent);
@@ -152,7 +155,7 @@ async function start() {
     srv = await startServer({ root, dataDir, seal, unseal, port: 0, ...about });
   }
   await session.defaultSession.cookies.set({ url: srv.url, name: 'viti', value: srv.key, httpOnly: true, sameSite: 'strict' });
-  Menu.setApplicationMenu(null);
+  Menu.setApplicationMenu(mac ? Menu.buildFromTemplate([{ role: 'appMenu' }, { role: 'editMenu' }, { role: 'windowMenu' }]) : null);
   // the background while the page loads matches the theme (no white flash in the dark one)
   let dark = nativeTheme.shouldUseDarkColors;
   try {
@@ -185,15 +188,16 @@ async function start() {
     if (input.type !== 'keyDown') return;
     if (input.key === 'F5') win.webContents.reload();
     else if (input.key === 'F12') win.webContents.toggleDevTools();
-    else if (input.control && (input.key === '=' || input.key === '+')) win.webContents.setZoomLevel(win.webContents.getZoomLevel() + 0.5);
-    else if (input.control && input.key === '-') win.webContents.setZoomLevel(win.webContents.getZoomLevel() - 0.5);
-    else if (input.control && input.key === '0') win.webContents.setZoomLevel(0);
+    else if ((input.control || input.meta) && (input.key === '=' || input.key === '+')) win.webContents.setZoomLevel(win.webContents.getZoomLevel() + 0.5);
+    else if ((input.control || input.meta) && input.key === '-') win.webContents.setZoomLevel(win.webContents.getZoomLevel() - 0.5);
+    else if ((input.control || input.meta) && input.key === '0') win.webContents.setZoomLevel(0);
     else return;
     e.preventDefault();
   });
-  // closing the window: into the tray when that is chosen (mail keeps coming in), else Viti quits
+  // closing the window: into the tray when that is chosen (mail keeps coming in), else Viti quits. On a Mac it
+  // stays in the Dock, as apps do there (Cmd+Q quits)
   win.on('close', (e) => {
-    if (quitting || !srv?.prefs().tray) return;
+    if (quitting || !(mac || srv?.prefs().tray)) return;
     e.preventDefault();
     win.hide();
   });
@@ -203,7 +207,7 @@ async function start() {
   const id = openArg(process.argv);
   if (id) await openInWindow(id);
   else win.loadURL(srv.url + '/home');
-  if (startHidden && srv.prefs().tray) win.hide();
+  if ((startHidden || (mac && app.getLoginItemSettings().wasOpenedAtLogin)) && (mac || srv.prefs().tray)) win.hide();
 }
 
 // a project, opened and shown (from the jump list or the tray)
@@ -267,6 +271,8 @@ app.on('second-instance', (e, argv) => {
   else showWindow();
 });
 app.whenReady().then(start);
+// (a Mac: clicking Viti in the Dock brings the window back)
+app.on('activate', showWindow);
 app.on('window-all-closed', () => app.quit());
 // the backup is sent before the app closes
 app.on('before-quit', (e) => {
