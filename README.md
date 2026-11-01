@@ -4,11 +4,13 @@
 
 Free and open source, for Windows, Mac and Linux.
 
+**Download:** [Windows](https://github.com/ionodev/viti/releases/latest/download/Viti-Windows-Setup.exe) · [Mac (Apple silicon)](https://github.com/ionodev/viti/releases/latest/download/Viti-Mac-AppleSilicon.dmg) · [Mac (Intel)](https://github.com/ionodev/viti/releases/latest/download/Viti-Mac-Intel.dmg) · [Linux (AppImage)](https://github.com/ionodev/viti/releases/latest/download/Viti-Linux.AppImage) · [Linux (.deb)](https://github.com/ionodev/viti/releases/latest/download/Viti-Linux.deb)
+
 ![A board with notes and the team chat](docs/board.png)
 
 ## Install
 
-Download the latest version from [Releases](https://github.com/ionodev/viti/releases):
+Use the links above, or pick a file from [Releases](https://github.com/ionodev/viti/releases):
 
 | | File | First start |
 |---|---|---|

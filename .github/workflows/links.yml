@@ -1,0 +1,36 @@
+# After a release is published: copies of its downloads under names without the version
+# (Viti-Windows-Setup.exe ...), so github.com/ionodev/viti/releases/latest/download/<name> always gives the
+# newest one. The README links to these. (The versioned files stay: the updates are found by their names.)
+name: Download links
+
+on:
+  workflow_run:
+    workflows: ['Build and release']
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  links:
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && startsWith(github.event.workflow_run.head_branch, 'v'))
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - run: |
+          set -e
+          tag=$(gh release view --json tagName -q .tagName)
+          mkdir out && cd out
+          gh release download "$tag" -p 'Viti-Setup-*.exe' -p '*-portable.exe' -p '*-mac-*.dmg' -p '*-linux-*.AppImage' -p '*-linux-*.deb'
+          mkdir links
+          cp Viti-Setup-*.exe links/Viti-Windows-Setup.exe
+          cp Viti-*-portable.exe links/Viti-Windows-Portable.exe
+          cp Viti-*-mac-arm64.dmg links/Viti-Mac-AppleSilicon.dmg
+          if ls Viti-*-mac-x64.dmg >/dev/null 2>&1; then cp Viti-*-mac-x64.dmg links/Viti-Mac-Intel.dmg; fi
+          cp Viti-*-linux-*.AppImage links/Viti-Linux.AppImage
+          cp Viti-*-linux-*.deb links/Viti-Linux.deb
+          gh release upload "$tag" links/* --clobber
+          ls -la links
