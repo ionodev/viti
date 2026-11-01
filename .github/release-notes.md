@@ -1,19 +1,9 @@
 ## Download
 
-**Windows**
-- `Viti-Setup-….exe`: the installer. Installed Viti updates itself.
-- `Viti-…-portable.exe`: runs without installing (tells you when there is a new version).
+| | File | |
+|---|---|---|
+| **Windows** | `Viti-Setup-….exe` | Run it. If Windows says *Windows protected your PC*: **More info › Run anyway**. Updates itself. |
+| **Mac** (Apple silicon and Intel) | `Viti-…-mac.dmg` | Drag Viti to Applications and open it. The first time macOS can't verify it: click **Done**, then **System Settings › Privacy & Security › Open Anyway**. Tells you when there is a new version. |
+| **Linux** (any distribution) | `Viti-…-linux-….AppImage` | `chmod +x` it (or Properties › Allow executing) and open it. On Ubuntu 22.04+ it may first need `sudo apt install libfuse2` (24.04: `libfuse2t64`). Updates itself. |
 
-The first time, Windows may say *"Windows protected your PC"*: click **More info › Run anyway**.
-
-**Mac**
-- `Viti-…-mac-arm64.dmg`: Macs with Apple silicon (M1 and later).
-- `Viti-…-mac-x64.dmg`: Macs with an Intel processor.
-
-Open the .dmg and drag Viti to Applications. Viti is not signed by Apple, so the first time macOS says it *could not verify* Viti: click **Done**, then open **System Settings › Privacy & Security**, scroll down and click **Open Anyway** next to Viti. If it says Viti *is damaged*, open Terminal and run `xattr -dr com.apple.quarantine /Applications/Viti.app`, then open it again.
-
-On a Mac, Viti tells you when there is a new version to download.
-
-**Linux**
-- `Viti-…-linux-….AppImage`: runs on most distributions, and updates itself. Make it runnable (`chmod +x Viti-*.AppImage`, or Properties › Allow executing) and open it. On Ubuntu 22.04 and later it may first need `sudo apt install libfuse2` (on 24.04: `libfuse2t64`).
-- `Viti-…-linux-….deb`: for Ubuntu and Debian: `sudo apt install ./Viti-*.deb`. Viti tells you when there is a new one to install.
+**Also here:** `Viti-…-portable.exe` runs on Windows without installing; `Viti-…-linux-….deb` installs on Ubuntu and Debian (`sudo apt install ./Viti-*.deb`). If a Mac says Viti *is damaged*, run `xattr -dr com.apple.quarantine /Applications/Viti.app` in Terminal.

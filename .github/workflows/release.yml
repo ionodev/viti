@@ -24,7 +24,7 @@ jobs:
             args: --win nsis portable
           - os: macos-latest
             name: mac
-            args: --mac dmg --arm64 --x64
+            args: --mac dmg --universal
           - os: ubuntu-latest
             name: linux
             args: --linux AppImage deb

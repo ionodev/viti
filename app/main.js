@@ -65,7 +65,7 @@ async function checkUpdates() {
     if (!r.ok) throw new Error(`GitHub answered ${r.status}.`);
     const j = await r.json();
     const v = String(j.tag_name || '').replace(/^v/, '');
-    const mine = process.platform === 'darwin' ? new RegExp(`mac-${process.arch}\\.dmg$`, 'i') : process.platform === 'linux' ? new RegExp(`linux-${process.arch === 'x64' ? '(x64|amd64|x86_64)' : '(arm64|aarch64)'}\\.deb$`, 'i') : /portable\.exe$/i;
+    const mine = process.platform === 'darwin' ? /-mac\.dmg$/i : process.platform === 'linux' ? new RegExp(`linux-${process.arch === 'x64' ? '(x64|amd64|x86_64)' : '(arm64|aarch64)'}\\.deb$`, 'i') : /portable\.exe$/i;
     const exe = (j.assets || []).find((a) => mine.test(a.name));
     setUpd(newer(v, app.getVersion()) ? { state: 'available', version: v, url: exe?.browser_download_url || j.html_url } : { state: 'none' });
   } catch (e) {
