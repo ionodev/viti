@@ -1,7 +1,7 @@
 {
   "name": "viti-desktop",
   "productName": "Viti",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "private": true,
   "description": "Viti: a project page for any GitHub repository (boards, chat, to-dos, reports), for Windows, Mac and Linux",
   "main": "app/main.js",
