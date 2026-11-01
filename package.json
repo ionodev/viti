@@ -1,7 +1,7 @@
 {
   "name": "viti-desktop",
   "productName": "Viti",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
   "description": "Viti: a project page for any GitHub repository (boards, chat, to-dos, reports), as a Windows app",
   "main": "app/main.js",
@@ -9,13 +9,15 @@
   "scripts": {
     "start": "electron .",
     "dev": "node app/dev.mjs",
-    "dist": "electron-builder --win nsis portable"
+    "dist": "electron-builder --win nsis portable",
+    "release": "electron-builder --win nsis portable --publish always"
   },
   "devDependencies": {
     "electron": "^38.8.6",
     "electron-builder": "^26.18.0"
   },
   "dependencies": {
+    "electron-updater": "^6.8.11",
     "imapflow": "^1.7.8",
     "mailparser": "^3.14.1",
     "nodemailer": "^7.0.13",
@@ -62,7 +64,15 @@
     },
     "portable": {
       "artifactName": "Viti-${version}-portable.${ext}"
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "ionodev",
+        "repo": "viti",
+        "releaseType": "release"
+      }
+    ]
   },
   "repository": {
     "type": "git",

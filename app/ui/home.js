@@ -4,6 +4,7 @@
 import { h, ago, toast, modal, menu } from '/js/ui.js';
 import { appearanceControls } from '/js/appearance.js';
 import { openAbout } from '/js/about.js';
+import { updateBar } from '/js/update.js';
 
 const TOKEN_URL = 'https://github.com/settings/personal-access-tokens/new';
 let state = { projects: [] };
@@ -439,3 +440,4 @@ async function remove(p) {
 document.getElementById('about').addEventListener('click', () => openAbout());
 document.getElementById('look').addEventListener('click', settings);
 load().catch((e) => toast(e.message, true));
+updateBar();

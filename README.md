@@ -13,6 +13,8 @@ Viti is a Windows app. It is free and open source.
 
 You can add as many projects as you like, and switch between them on the home screen.
 
+**Updates come by themselves.** The installed Viti downloads a new version in the background and puts it in the next time it starts (or right away, from the bar at the top). The portable version tells you when there is a new one to download.
+
 ## What you can do
 
 - **Boards.** An endless canvas for each section: sticky notes, text, images, drawings, highlighted words, groups, and notes with headings and equations. Drag, zoom and arrange things as you think.

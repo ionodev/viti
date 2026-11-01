@@ -6,6 +6,9 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { startServer } from './server.js';
+import updater from 'electron-updater';
+
+const { autoUpdater } = updater;
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PORT = 47821; // (the same address every run, so what pages remember stays; another one if it is taken)
@@ -32,6 +35,60 @@ const exe = process.env.PORTABLE_EXECUTABLE_FILE || process.execPath;
 // "--open=<project id>" (the jump list, the tray) and "--hidden" (started with Windows, into the tray)
 const openArg = (argv) => (argv.find((a) => a.startsWith('--open=')) || '').slice(7);
 const startHidden = process.argv.includes('--hidden');
+
+// ---- updates: new versions are GitHub Releases of ionodev/viti. The installed Viti downloads one by itself and
+// puts it in when it restarts (or at once, when you choose); the portable one cannot change itself, so it only
+// says that there is one, and where to get it.
+const REPO = 'ionodev/viti';
+const portable = !!process.env.PORTABLE_EXECUTABLE_FILE;
+const upd = { state: 'idle', version: '', percent: 0, error: '', checked: 0, portable, url: `https://github.com/${REPO}/releases/latest` };
+let onUpdate = () => {};
+const setUpd = (x) => (Object.assign(upd, x), onUpdate(upd));
+const newer = (a, b) => {
+  const x = String(a).split('.').map(Number);
+  const y = String(b).split('.').map(Number);
+  for (let i = 0; i < 3; i++) if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0);
+  return false;
+};
+async function checkUpdates() {
+  if (!app.isPackaged) return setUpd({ state: 'off' });
+  if (upd.state === 'ready' || upd.state === 'downloading') return;
+  setUpd({ state: 'checking', error: '', checked: Date.now() });
+  try {
+    if (!portable) return void (await autoUpdater.checkForUpdates());
+    const r = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`, { headers: { accept: 'application/vnd.github+json', 'user-agent': 'viti' } });
+    if (r.status === 404) return setUpd({ state: 'none' });
+    if (!r.ok) throw new Error(`GitHub answered ${r.status}.`);
+    const j = await r.json();
+    const v = String(j.tag_name || '').replace(/^v/, '');
+    const exe = (j.assets || []).find((a) => /portable\.exe$/i.test(a.name));
+    setUpd(newer(v, app.getVersion()) ? { state: 'available', version: v, url: exe?.browser_download_url || j.html_url } : { state: 'none' });
+  } catch (e) {
+    // (no release yet is not a problem worth showing)
+    setUpd(/404|latest version|no published versions/i.test(e.message) ? { state: 'none' } : { state: 'error', error: String(e.message).split('\n')[0].slice(0, 200) });
+  }
+}
+function setupUpdates(notify) {
+  if (!app.isPackaged) return setUpd({ state: 'off' });
+  if (!portable) {
+    // (VITI_UPDATE_URL: a folder with latest.yml and the installer, to try an update without a release)
+    if (process.env.VITI_UPDATE_URL) autoUpdater.setFeedURL({ provider: 'generic', url: process.env.VITI_UPDATE_URL });
+    autoUpdater.autoDownload = true;
+    autoUpdater.disableWebInstaller = true;
+    autoUpdater.autoInstallOnAppQuit = true;
+    autoUpdater.logger = { info: (m) => console.log('update:', m), warn: (m) => console.log('update:', m), error: (m) => console.error('update:', m), debug: () => {} };
+    autoUpdater.on('update-available', (i) => setUpd({ state: 'downloading', version: i.version, percent: 0 }));
+    autoUpdater.on('download-progress', (p) => setUpd({ percent: Math.round(p.percent) }));
+    autoUpdater.on('update-not-available', () => setUpd({ state: 'none' }));
+    autoUpdater.on('update-downloaded', (i) => {
+      setUpd({ state: 'ready', version: i.version, percent: 100 });
+      notify(`Viti ${i.version} is ready`, 'It is put in when Viti restarts. Or restart now from the bar at the top.');
+    });
+    autoUpdater.on('error', (e) => upd.state !== 'checking' && setUpd({ state: 'error', error: String(e?.message || e).split('\n')[0].slice(0, 200) }));
+  }
+  setTimeout(checkUpdates, 15000);
+  setInterval(checkUpdates, 4 * 60 * 60 * 1000);
+}
 
 // a log of what happens (and goes wrong), for the About page's "Open the log": %APPDATA%\Viti\logs\viti.log,
 // started afresh when it grows past 1 MB
@@ -76,6 +133,17 @@ async function start() {
     pickFolder: async (from) => (await dialog.showOpenDialog(win, { title: 'Where should Viti keep your projects?', defaultPath: from, properties: ['openDirectory', 'createDirectory'] })).filePaths?.[0] || '',
     saveFile: async (name) => (await dialog.showSaveDialog(win, { title: 'Export the project', defaultPath: path.join(app.getPath('documents'), name), filters: [{ name: 'Zip', extensions: ['zip'] }] })).filePath || '',
     reveal: (p) => shell.showItemInFolder(p),
+    // updates: how they stand, look now, and restart into the new version
+    update: {
+      get: () => ({ ...upd, current: app.getVersion() }),
+      check: async () => (await checkUpdates(), { ...upd, current: app.getVersion() }),
+      install: () => {
+        if (upd.state !== 'ready') return false;
+        quitting = true;
+        setImmediate(() => autoUpdater.quitAndInstall(true, true));
+        return true;
+      },
+    },
   };
   const about = { version: app.getVersion(), logFile, openPath: (p) => shell.openPath(p), notify, desktop };
   try {
@@ -130,6 +198,7 @@ async function start() {
     win.hide();
   });
   desktop.changed({ recent: srv.recent(), prefs: srv.prefs() });
+  setupUpdates(notify);
   // started from the jump list or the tray with a project: straight into it
   const id = openArg(process.argv);
   if (id) await openInWindow(id);

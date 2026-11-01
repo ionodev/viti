@@ -486,6 +486,10 @@ export async function startServer({ root, dataDir, seal, unseal, port = 0, key: 
       }
     }
     // ---- About: the version, where your data is, and the log
+    // ---- updates (the window does the work: app/main.js)
+    if (p === '/app/update' && req.method === 'GET') return send(200, { ok: true, ...(desktop?.update?.get() || { state: 'off' }) });
+    if (p === '/app/update/check' && req.method === 'POST') return send(200, { ok: true, ...(desktop?.update ? await desktop.update.check() : { state: 'off' }) });
+    if (p === '/app/update/install' && req.method === 'POST') return send(200, { ok: !!desktop?.update?.install() });
     if (p === '/app/about' && req.method === 'GET') return send(200, { ok: true, version, dataDir, logFile, canOpen: !!openPath, repo: 'ionodev/viti' });
     if (p === '/app/reveal' && req.method === 'POST') {
       const what = body.what === 'log' ? logFile : body.what === 'data' ? dataDir : '';

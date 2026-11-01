@@ -1,6 +1,7 @@
 // About Viti: the version, where your data is kept, the log, and where to go with problems and ideas. Opened from
 // the home screen and from Settings.
 import { h, modal, toast } from './ui.js';
+import { updateRow } from './update.js';
 
 export async function openAbout() {
   let a = {};
@@ -25,7 +26,7 @@ export async function openAbout() {
       { class: 'about-rows' },
       row('Your data', a.dataDir || 'In your Windows user folder.', a.canOpen ? btn('Open folder', () => reveal('data')) : null),
       a.logFile ? row('The log', 'What Viti did, and anything that went wrong. Handy when you report a problem.', a.canOpen ? btn('Open the log', () => reveal('log')) : null) : null,
-      row('Updates', 'New versions are on the releases page.', btn('Releases', () => window.open(`${repo}/releases`))),
+      await updateRow(row, btn),
       row('Problems and ideas', 'Tell us on GitHub.', btn('Report a problem', () => window.open(`${repo}/issues/new`))),
     ),
   );

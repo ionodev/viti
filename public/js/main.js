@@ -7,6 +7,7 @@ import { sectionLabel } from './state.js';
 import { h, $, avatar, toast, menu, modal, promptBox, confirmBox, ago, typing } from './ui.js';
 import { openSearch, openShortcuts } from './search.js';
 import { firstTips } from './tips.js';
+import { updateBar } from './update.js';
 import { Board, snippet, kindLabel } from './board.js';
 import { Bugs } from './bugs.js';
 import { Todo } from './todo.js';
@@ -53,6 +54,7 @@ async function boot() {
   route();
   if (!S.me.named) welcome();
   else firstTips();
+  updateBar();
 }
 
 // the first time someone opens the hub: who are you?
