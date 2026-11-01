@@ -24,7 +24,7 @@ jobs:
             args: --win nsis portable
           - os: macos-latest
             name: mac
-            args: --mac dmg
+            args: --mac dmg --arm64 --x64
           - os: ubuntu-latest
             name: linux
             args: --linux AppImage deb
@@ -62,6 +62,7 @@ jobs:
         with:
           path: out
           merge-multiple: true
-      - run: gh release create "$GITHUB_REF_NAME" out/* --title "Viti ${GITHUB_REF_NAME#v}" --notes-file .github/release-notes.md
+      # (made once; run again for the same version, it replaces the files)
+      - run: gh release create "$GITHUB_REF_NAME" out/* --title "Viti ${GITHUB_REF_NAME#v}" --notes-file .github/release-notes.md || gh release upload "$GITHUB_REF_NAME" out/* --clobber
         env:
           GH_TOKEN: ${{ github.token }}
