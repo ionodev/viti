@@ -1,6 +1,6 @@
 // A small client for the parts of the GitHub API the mirror needs (the Git Data API, so a whole batch of
 // changes becomes one commit), and a reader for the .tar.gz that a restore downloads.
-import { b64encode } from './util.js';
+import { b64encode, b64decode } from './util.js';
 
 export const EMPTY = 'This repository is empty, so GitHub cannot keep Viti’s backup branch in it yet. Give it a first commit (a README is enough): on GitHub, or click the backup status in Viti and choose “Start it with a README”.';
 
@@ -41,9 +41,27 @@ export class GitHub {
     if (!res.ok) throw new Error(`GitHub could not add the README (${res.status}).`);
   }
 
+  // the branch's latest commit (null: there is no branch yet)
+  async head() {
+    return (await this.call('GET', `/git/ref/heads/${this.branch}`, null, true))?.object?.sha || null;
+  }
+  // every file in a commit: [{ path, sha }]
+  async tree(commit) {
+    const c = await this.call('GET', `/git/commits/${commit}`);
+    const t = await this.call('GET', `/git/trees/${c.tree.sha}?recursive=1`);
+    return t.tree.filter((e) => e.type === 'blob').map((e) => ({ path: e.path, sha: e.sha }));
+  }
+  // one file's content, by its sha
+  async blob(sha) {
+    return b64decode((await this.call('GET', `/git/blobs/${sha}`)).content);
+  }
+
   // files: { path: string | Uint8Array | null }  (null deletes). One commit on the branch (made if missing).
-  async commit(files, message) {
+  // parent: the commit this is meant to follow (undefined: any). Someone else committed since? Then nothing
+  // is written and the error's code is 'behind': fetch theirs first, then try again.
+  async commit(files, message, parent) {
     const head = await this.call('GET', `/git/ref/heads/${this.branch}`, null, true);
+    if (parent !== undefined && (head?.object?.sha || null) !== parent) throw Object.assign(new Error('Someone else backed up meanwhile.'), { code: 'behind' });
     let baseTree = null;
     if (head) baseTree = (await this.call('GET', `/git/commits/${head.object.sha}`)).tree.sha;
     const tree = [];
@@ -57,8 +75,14 @@ export class GitHub {
     }
     const t = await this.call('POST', '/git/trees', baseTree ? { base_tree: baseTree, tree } : { tree });
     const c = await this.call('POST', '/git/commits', { message, tree: t.sha, parents: head ? [head.object.sha] : [] });
-    if (head) await this.call('PATCH', `/git/refs/heads/${this.branch}`, { sha: c.sha });
-    else await this.call('POST', '/git/refs', { ref: `refs/heads/${this.branch}`, sha: c.sha });
+    try {
+      if (head) await this.call('PATCH', `/git/refs/heads/${this.branch}`, { sha: c.sha });
+      else await this.call('POST', '/git/refs', { ref: `refs/heads/${this.branch}`, sha: c.sha });
+    } catch (e) {
+      // (someone committed in the moment between: not a fast-forward any more)
+      if (/→ 422/.test(e.message)) throw Object.assign(new Error('Someone else backed up meanwhile.'), { code: 'behind' });
+      throw e;
+    }
     return c.sha;
   }
 

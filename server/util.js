@@ -15,6 +15,18 @@ export const sha256hex = async (data) => {
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
 };
 
+// the name git gives a file's content (its blob sha): to know, without asking GitHub, what a file there is
+export const gitsha = async (data) => {
+  const bytes = typeof data === 'string' ? new TextEncoder().encode(data) : data;
+  const head = new TextEncoder().encode(`blob ${bytes.length}\0`);
+  const all = new Uint8Array(head.length + bytes.length);
+  all.set(head);
+  all.set(bytes, head.length);
+  const buf = await crypto.subtle.digest('SHA-1', all);
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+};
+export const b64decode = (s) => Uint8Array.from(atob(String(s).replace(/\s/g, '')), (c) => c.charCodeAt(0));
+
 // compare two secrets without leaking where they differ
 export const safeEqual = (a, b) => {
   a = String(a || '');
@@ -42,7 +54,6 @@ export const slugify = (s) =>
     .replace(/^-+|-+$/g, '')
     .slice(0, 40) || 'section';
 
-export const b64decode = (s) => Uint8Array.from(atob(String(s).replace(/\s/g, '')), (c) => c.charCodeAt(0));
 export const b64encode = (bytes) => {
   let bin = '';
   for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));

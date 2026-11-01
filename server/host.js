@@ -85,6 +85,7 @@ export async function openProject({ dbFile, env, user }) {
     },
     // the backup now (before closing), then shut
     async close() {
+      hub.mirror.stopPolling();
       try {
         if (hub.mirror.gh?.configured) await hub.mirror.run();
       } catch {}

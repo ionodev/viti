@@ -161,15 +161,7 @@ function chrome() {
       }
       return;
     }
-    try {
-      toast('Backing up to GitHub…');
-      const r = await api('POST', '/api/admin/sync', {});
-      S.sync = r.sync;
-      drawSync();
-      toast(r.sync.ok === false ? `The backup failed: ${r.sync.error}` : 'Backed up to GitHub.', r.sync.ok === false);
-    } catch (e) {
-      toast(e.message, true);
-    }
+    syncStatus();
   });
   $('#chat-btn').addEventListener('click', () => {
     const off = document.body.classList.toggle('nochat');
@@ -558,9 +550,50 @@ function drawSidebar() {
 function drawSync() {
   const el = $('#sync');
   const s = S.sync || {};
-  el.className = 'sync ' + (!s.configured ? 'off' : s.ok === false ? 'bad' : 'ok');
-  el.textContent = !s.configured ? 'Not backed up' : s.ok === false && /repository is empty/i.test(s.error || '') ? 'Empty repository: click to start it' : s.ok === false ? 'Backup failed: click to retry' : s.at ? `Backed up ${ago(s.at)}${s.pending ? ' · more waiting' : ''}` : 'Backup: waiting for the first run';
-  el.title = !s.configured ? 'Sign in with GitHub on the home screen to back this project up.' : s.error || 'Everything is also kept in the repository on GitHub (in a branch of its own). Click to back up now.';
+  el.className = 'sync ' + (!s.configured ? 'off' : s.ok === false ? 'bad' : s.running ? 'busy' : 'ok');
+  el.textContent = !s.configured ? 'Not backed up' : s.ok === false && /repository is empty/i.test(s.error || '') ? 'Empty repository: click to start it' : s.ok === false ? 'Backup failed: click for more' : s.running ? 'Backing up…' : s.at ? `Backed up ${ago(s.at)}${s.pending ? ' · changes waiting' : ''}` : 'Backup: waiting for the first run';
+  el.title = !s.configured ? 'Sign in with GitHub on the home screen to back this project up.' : s.error || 'Backed up to the repository on GitHub, and kept in step with your teammates. Click for more.';
+}
+// the backup and the teammates' changes: how they stand, and backing up now
+let syncBox = null;
+async function syncStatus() {
+  if (syncBox) return;
+  const body = h('div', { class: 'sync-box' });
+  const row = (cls, title, text) => h('div', { class: 'sb-row ' + cls }, h('span', { class: 'sb-dot' }), h('div', {}, h('b', {}, title), text ? h('small', {}, text) : null));
+  const paint = () => {
+    const s = S.sync || {};
+    body.replaceChildren(
+      s.ok === false
+        ? row('bad', 'The last backup failed', `${s.error || 'Something went wrong.'} Viti tries again by itself in a few minutes.`)
+        : s.pending
+          ? row('wait', `${s.pending} change${s.pending === 1 ? '' : 's'} waiting`, 'Backed up a few seconds after you stop, and when Viti closes.')
+          : row('ok', 'Everything is backed up', s.at ? `Last backup ${ago(s.at)}.` : 'Nothing to back up yet.'),
+      s.checkError
+        ? row('bad', 'Could not look for teammates’ changes', s.checkError)
+        : row('ok', 'In step with your teammates', `${s.checked ? `Checked ${ago(s.checked)}` : 'Checked every 20 seconds'}${s.came ? `; their last changes came in ${ago(s.came)}` : ''}. What they do appears here by itself.`),
+      h('p', { class: 'sb-note' }, 'Everything in this project is kept in its repository on GitHub, in a branch of its own, so each teammate’s Viti shares the same boards, chats, reports and mail.'),
+    );
+  };
+  paint();
+  const timer = setInterval(paint, 1000);
+  syncBox = modal('Backup', body, [
+    { label: 'Close', value: false },
+    { label: 'Back up now', value: true, primary: true },
+  ]);
+  const go = await syncBox;
+  clearInterval(timer);
+  syncBox = null;
+  if (go !== true) return;
+  try {
+    S.sync = { ...S.sync, running: true };
+    drawSync();
+    const r = await api('POST', '/api/admin/sync', {});
+    S.sync = r.sync;
+    drawSync();
+    toast(r.sync.ok === false ? `The backup failed: ${r.sync.error}` : 'Backed up to GitHub.', r.sync.ok === false);
+  } catch (e) {
+    toast(e.message, true);
+  }
 }
 function drawTitle() {
   const sec = sectionById(S.section);
@@ -729,11 +762,7 @@ function wire(live) {
     if (S.section) live.send({ t: 'view', section: S.section });
     if (!reconnecting) return;
     reconnecting = false;
-    refreshState();
-    if (view instanceof Board || view instanceof NoteView) view.resync();
-    else if (view instanceof Bugs || view instanceof Overview || view instanceof Calendar) view.load();
-    else if (view instanceof Progress) view.load(false);
-    chat?.load();
+    refreshAll();
   });
   live.on('close', () => {
     reconnecting = true;
@@ -799,4 +828,19 @@ function wire(live) {
     drawSync();
   });
   live.on('reload', () => location.reload());
+  // a teammate's changes came in from GitHub: what is shown is fetched again (no reload)
+  live.on('remote', (m) => {
+    S.sync = m.sync;
+    drawSync();
+    clearTimeout(remoteSoon);
+    remoteSoon = setTimeout(refreshAll, 200);
+  });
+}
+let remoteSoon = 0;
+function refreshAll() {
+  refreshState();
+  if (view instanceof Board || view instanceof NoteView) view.resync();
+  else if (view instanceof Bugs || view instanceof Overview || view instanceof Calendar) view.load();
+  else if (view instanceof Progress) view.load(false);
+  chat?.load();
 }

@@ -217,7 +217,7 @@ export async function startServer({ root, dataDir, seal, unseal, port = 0, key: 
     fs.mkdirSync(dir, { recursive: true });
     const dbFile = path.join(dir, 'viti.sqlite');
     const fresh = !fs.existsSync(dbFile);
-    const env = { GITHUB_API: GH_API, BRANCHES_API: GH_API, GITHUB_REPO: p.repo, GITHUB_TOKEN: token, GITHUB_BRANCH: p.branch || DATA_BRANCH, GITHUB_DIR: p.dir || 'viti', BRANCHES_REPO: p.branchesFrom || p.repo, BRANCHES_TOKEN: token, MIRROR_DELAY_MS: '60000' };
+    const env = { GITHUB_API: GH_API, BRANCHES_API: GH_API, GITHUB_REPO: p.repo, GITHUB_TOKEN: token, GITHUB_BRANCH: p.branch || DATA_BRANCH, GITHUB_DIR: p.dir || 'viti', BRANCHES_REPO: p.branchesFrom || p.repo, BRANCHES_TOKEN: token, MIRROR_DELAY_MS: '15000' };
     // (who you are in this project: your GitHub sign-in, unless the backup already knows you by another address)
     const who = { ...(p.user || {}), ...(p.as ? { email: p.as } : {}) };
     const host = await openProject({ dbFile, env, user: who });
@@ -244,6 +244,8 @@ export async function startServer({ root, dataDir, seal, unseal, port = 0, key: 
       }
     }
     await host.profile(p.user || {});
+    // teammates' changes: looked for while the project is open
+    host.hub.mirror.startPolling();
     p.opened = Date.now();
     saveCfg();
     current = { id, host };

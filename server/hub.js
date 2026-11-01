@@ -48,6 +48,8 @@ const SCHEMA = [
   'CREATE INDEX IF NOT EXISTS calendar_date ON calendar(date)',
   'CREATE TABLE IF NOT EXISTS dirty (key TEXT PRIMARY KEY, seq INTEGER)',
   'CREATE TABLE IF NOT EXISTS mirror (path TEXT PRIMARY KEY, hash TEXT)',
+  // the files on GitHub as of the last sync: git's sha for each, and the content of the ones merged (the "before" of the next merge)
+  'CREATE TABLE IF NOT EXISTS remote (path TEXT PRIMARY KEY, sha TEXT, body BLOB)',
 ];
 
 const WELCOME = [
@@ -426,7 +428,7 @@ export class Hub extends DurableObject {
           const body = clip(m.body, LIMITS.msg).trim();
           if (!body) continue;
           const ts = Math.round(num(m.ts, now));
-          this.run('INSERT INTO messages (section, author, name, ts, body, refs, deleted) VALUES (?, ?, ?, ?, ?, ?, 0)', sid, byName.get(String(m.name || '').toLowerCase()) || null, clip(m.name, 80), ts, body, '[]');
+          this.run('INSERT INTO messages (id, section, author, name, ts, body, refs, deleted) VALUES (?, ?, ?, ?, ?, ?, ?, 0)', this.msgId(), sid, byName.get(String(m.name || '').toLowerCase()) || null, clip(m.name, 80), ts, body, '[]');
           this.markDirty(`chat:${sid}:${new Date(ts).toISOString().slice(0, 10)}`);
           made.messages = (made.messages || 0) + 1;
         }
@@ -631,14 +633,19 @@ export class Hub extends DurableObject {
     }
     return out;
   }
+  // a new message's id: from the time, with a random end (teammates each write on their own computer, and their
+  // messages meet in the backup: the ids must not clash, and still follow the order they were written in)
+  msgId() {
+    return Math.max(Date.now() * 1000 + Math.floor(Math.random() * 1000), this.one('SELECT COALESCE(MAX(id), 0) + 1 AS n FROM messages').n);
+  }
   postMessage(section, email, body, refs) {
     body = clip(body, LIMITS.msg).trim();
     refs = this.cleanRefs(refs);
     if (!body && !refs.length) return null;
     const u = this.ensureUser(email);
     const ts = Date.now();
-    this.run('INSERT INTO messages (section, author, name, ts, body, refs, deleted) VALUES (?, ?, ?, ?, ?, ?, 0)', section, email, u.name, ts, body, JSON.stringify(refs));
-    const id = this.one('SELECT last_insert_rowid() AS id').id;
+    const id = this.msgId();
+    this.run('INSERT INTO messages (id, section, author, name, ts, body, refs, deleted) VALUES (?, ?, ?, ?, ?, ?, ?, 0)', id, section, email, u.name, ts, body, JSON.stringify(refs));
     this.run('INSERT INTO reads (email, section, last_id) VALUES (?, ?, ?) ON CONFLICT(email, section) DO UPDATE SET last_id=MAX(last_id, excluded.last_id)', email, section, id);
     this.markDirty(`chat:${section}:${new Date(ts).toISOString().slice(0, 10)}`);
     return this.msgOut(this.one('SELECT * FROM messages WHERE id=?', id));
