@@ -3,7 +3,7 @@
   "productName": "Viti",
   "version": "0.7.0",
   "private": true,
-  "description": "Viti: a project page for any GitHub repository (boards, chat, to-dos, reports), for Windows and Mac",
+  "description": "Viti: a project page for any GitHub repository (boards, chat, to-dos, reports), for Windows, Mac and Linux",
   "main": "app/main.js",
   "type": "module",
   "scripts": {
@@ -92,6 +92,23 @@
     },
     "dmg": {
       "artifactName": "Viti-${version}-mac-${arch}.${ext}"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Office",
+      "icon": "build/icon.png",
+      "maintainer": "ionodev <ionodev@users.noreply.github.com>",
+      "synopsis": "A shared workspace for your project on GitHub",
+      "artifactName": "Viti-${version}-linux-${arch}.${ext}"
+    },
+    "deb": {
+      "artifactName": "Viti-${version}-linux-${arch}.${ext}"
+    },
+    "appImage": {
+      "artifactName": "Viti-${version}-linux-${arch}.${ext}"
     }
   },
   "repository": {

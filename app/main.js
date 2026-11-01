@@ -4,6 +4,7 @@
 import { app, BrowserWindow, session, safeStorage, shell, Menu, nativeTheme, Notification, Tray, nativeImage, dialog } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
+import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { startServer } from './server.js';
 import updater from 'electron-updater';
@@ -41,8 +42,9 @@ const startHidden = process.argv.includes('--hidden');
 // puts it in when it restarts (or at once, when you choose); the portable one cannot change itself, so it only
 // says that there is one, and where to get it.
 const REPO = 'ionodev/viti';
-// (the Mac version is not signed by Apple, so it cannot replace itself either)
-const portable = !!process.env.PORTABLE_EXECUTABLE_FILE || process.platform === 'darwin';
+// (the Mac version is not signed by Apple, so it cannot replace itself either; on Linux only the AppImage can,
+// the .deb is updated by installing the new one)
+const portable = !!process.env.PORTABLE_EXECUTABLE_FILE || process.platform === 'darwin' || (process.platform === 'linux' && !process.env.APPIMAGE);
 const upd = { state: 'idle', version: '', percent: 0, error: '', checked: 0, portable, url: `https://github.com/${REPO}/releases/latest` };
 let onUpdate = () => {};
 const setUpd = (x) => (Object.assign(upd, x), onUpdate(upd));
@@ -63,7 +65,7 @@ async function checkUpdates() {
     if (!r.ok) throw new Error(`GitHub answered ${r.status}.`);
     const j = await r.json();
     const v = String(j.tag_name || '').replace(/^v/, '');
-    const mine = process.platform === 'darwin' ? new RegExp(`mac-${process.arch}\\.dmg$`, 'i') : /portable\.exe$/i;
+    const mine = process.platform === 'darwin' ? new RegExp(`mac-${process.arch}\\.dmg$`, 'i') : process.platform === 'linux' ? new RegExp(`linux-${process.arch === 'x64' ? '(x64|amd64|x86_64)' : '(arm64|aarch64)'}\\.deb$`, 'i') : /portable\.exe$/i;
     const exe = (j.assets || []).find((a) => mine.test(a.name));
     setUpd(newer(v, app.getVersion()) ? { state: 'available', version: v, url: exe?.browser_download_url || j.html_url } : { state: 'none' });
   } catch (e) {
@@ -128,7 +130,7 @@ async function start() {
   };
   // what the app's server needs from Windows: start with it, the tray and the jump list, and two dialogs
   const desktop = {
-    setStartup: (on) => app.setLoginItemSettings(mac ? { openAtLogin: !!on } : { openAtLogin: !!on, path: exe, args: ['--hidden'] }),
+    setStartup: (on) => (process.platform === 'linux' ? linuxAutostart(on) : app.setLoginItemSettings(mac ? { openAtLogin: !!on } : { openAtLogin: !!on, path: exe, args: ['--hidden'] })),
     changed: ({ recent, prefs }) => {
       jumpList(recent);
       trayIcon(prefs.tray, recent);
@@ -208,6 +210,20 @@ async function start() {
   if (id) await openInWindow(id);
   else win.loadURL(srv.url + '/home');
   if ((startHidden || (mac && app.getLoginItemSettings().wasOpenedAtLogin)) && (mac || srv.prefs().tray)) win.hide();
+}
+
+// Linux has no login-item setting: a file in ~/.config/autostart starts Viti when you log in (the AppImage
+// itself when that is how Viti runs, it may have moved since)
+function linuxAutostart(on) {
+  const file = path.join(process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config'), 'autostart', 'viti.desktop');
+  try {
+    if (!on) return fs.rmSync(file, { force: true });
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    const run = process.env.APPIMAGE || process.execPath;
+    fs.writeFileSync(file, `[Desktop Entry]\nType=Application\nName=Viti\nExec="${run}" --hidden\nX-GNOME-Autostart-enabled=true\n`);
+  } catch (e) {
+    console.error('autostart:', e.message);
+  }
 }
 
 // a project, opened and shown (from the jump list or the tray)

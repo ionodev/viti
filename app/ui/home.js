@@ -416,7 +416,13 @@ function settings() {
                 toggle('tray', 'Show Viti in the menu bar', 'An icon at the top of the screen, to open Viti or a recent project.'),
                 toggle('startup', 'Open at login', 'Viti opens in the background when you log in to your Mac, so new mail still comes in.'),
               ]
-            : [
+            : state.linux
+              ? [
+                  h('p', { class: 'label' }, 'Linux'),
+                  toggle('tray', 'Keep Viti running in the tray', 'Closing the window leaves Viti as an icon in the panel, so new mail still comes in. Quit it from there (your desktop needs to show tray icons).'),
+                  toggle('startup', 'Start when you log in', 'Viti starts in the background when you log in.'),
+                ]
+              : [
                 h('p', { class: 'label' }, 'Windows'),
                 toggle('tray', 'Keep Viti running in the tray', 'Closing the window leaves Viti in the notification area, so new mail still comes in. Quit it from the tray icon.'),
                 toggle('startup', 'Start with Windows', 'Viti starts when you sign in to Windows (into the tray, when that is on).'),

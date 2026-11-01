@@ -117,7 +117,7 @@ export async function openSettings() {
         const ok = 'Notification' in window && (Notification.permission === 'granted' || (await Notification.requestPermission()) === 'granted');
         if (!ok) {
           box.checked = false;
-          return toast('Notifications from Viti are turned off on this computer. Allow them in its settings (Windows: Settings › System › Notifications; Mac: System Settings › Notifications).', true);
+          return toast('Notifications from Viti are turned off on this computer. Allow them in its settings (Windows: Settings › System › Notifications; Mac: System Settings › Notifications; Linux: your desktop’s notification settings).', true);
         }
       }
       setSetting(key, box.checked);

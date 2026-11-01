@@ -339,7 +339,7 @@ export async function startServer({ root, dataDir, seal, unseal, port = 0, key: 
     const body = req.method === 'GET' ? {} : await readJson(req, url.pathname.startsWith('/app/mail/send/') ? 40 * 1024 * 1024 : 64 * 1024);
     const p = url.pathname;
     let m0;
-    if (p === '/app/state' && req.method === 'GET') return send(200, { ok: true, prefs: cfg.prefs, desktop: !!desktop, mac: process.platform === 'darwin', projectsDir: projectsRoot(), account: tokens[ACCOUNT] ? cfg.account || null : null, canSignIn: !!GITHUB_CLIENT_ID, projects: cfg.projects.map(view).sort((a, b) => b.opened - a.opened || b.added - a.added), current: current?.id || null });
+    if (p === '/app/state' && req.method === 'GET') return send(200, { ok: true, prefs: cfg.prefs, desktop: !!desktop, mac: process.platform === 'darwin', linux: process.platform === 'linux', projectsDir: projectsRoot(), account: tokens[ACCOUNT] ? cfg.account || null : null, canSignIn: !!GITHUB_CLIENT_ID, projects: cfg.projects.map(view).sort((a, b) => b.opened - a.opened || b.added - a.added), current: current?.id || null });
     if (p === '/app/signin/start' && req.method === 'POST') {
       if (!GITHUB_CLIENT_ID) return send(400, { ok: false, error: 'Signing in with GitHub is not set up in this build of Viti yet. Use a token for now.' });
       const r = await ghPost(GH_WEB + '/login/device/code', { client_id: GITHUB_CLIENT_ID, scope: SCOPE });

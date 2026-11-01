@@ -1,4 +1,4 @@
-# Builds Viti for Windows and for Mac (on GitHub's own computers: a Mac build needs a Mac), and publishes a
+# Builds Viti for Windows, Mac and Linux (on GitHub's own computers: a Mac build needs a Mac), and publishes a
 # release when a version tag (v1.2.3) is pushed. A push to main only builds, to show that both still build;
 # the files are kept for a few days under the run's "Artifacts".
 name: Build and release
@@ -25,6 +25,9 @@ jobs:
           - os: macos-latest
             name: mac
             args: --mac dmg
+          - os: ubuntu-latest
+            name: linux
+            args: --linux AppImage deb
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -44,6 +47,8 @@ jobs:
           path: |
             dist/*.exe
             dist/*.dmg
+            dist/*.AppImage
+            dist/*.deb
             dist/*.blockmap
             dist/latest*.yml
 
