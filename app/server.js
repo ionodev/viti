@@ -12,6 +12,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { openProject } from '../server/host.js';
 import { GITHUB_CLIENT_ID, SCOPE } from './github-app.js';
 import * as mail from './mail.js';
+import { zip } from './zip.js';
 
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf', '.webp': 'image/webp' };
 const CSP = "default-src 'self'; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' ws: wss:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'";
@@ -21,13 +22,13 @@ const GH_API = process.env.VITI_GITHUB_API || 'https://api.github.com';
 const GH_WEB = process.env.VITI_GITHUB_WEB || 'https://github.com';
 
 // root: the app folder; dataDir: where projects and settings live; seal/unseal: keep tokens encrypted
-export async function startServer({ root, dataDir, seal, unseal, port = 0, key: givenKey, version = '', logFile = '', openPath = null, notify = null }) {
+export async function startServer({ root, dataDir, seal, unseal, port = 0, key: givenKey, version = '', logFile = '', openPath = null, notify = null, desktop = null }) {
   const PUBLIC = path.join(root, 'public');
   const UI = path.join(root, 'app', 'ui');
   const key = givenKey || crypto.randomBytes(24).toString('hex');
   const cfgFile = path.join(dataDir, 'viti.json');
   const tokFile = path.join(dataDir, 'tokens.json');
-  fs.mkdirSync(path.join(dataDir, 'projects'), { recursive: true });
+  // (where the projects are kept is read from the settings below: projectsRoot())
 
   const load = (f, d) => {
     try {
@@ -41,6 +42,9 @@ export async function startServer({ root, dataDir, seal, unseal, port = 0, key: 
     fs.renameSync(f + '.tmp', f);
   };
   const cfg = load(cfgFile, {});
+  // the projects' own copies: in the app's data folder, or in a folder you chose (Settings › Where your projects are)
+  const projectsRoot = () => cfg.projectsDir || path.join(dataDir, 'projects');
+  const projDir = (id) => path.join(projectsRoot(), id);
   cfg.prefs = { theme: 'system', accent: '#6d5efc', ...(cfg.prefs || {}) };
   cfg.projects ||= [];
   const tokens = load(tokFile, {});
@@ -51,6 +55,9 @@ export async function startServer({ root, dataDir, seal, unseal, port = 0, key: 
   const hasToken = (id) => !!(tokens[id] || tokens[ACCOUNT]);
 
   let current = null; // { id, host }
+  // the projects most recently opened (for the jump list and the tray), and telling the window of a change
+  const recent = () => [...cfg.projects].sort((a, b) => (b.opened || 0) - (a.opened || 0)).slice(0, 8).map((p) => ({ id: p.id, repo: p.repo }));
+  const changed = () => desktop?.changed?.({ recent: recent(), prefs: { ...cfg.prefs } });
 
   // ---- mail: the email accounts you connected (yours, on this computer: they are never in a repository), and
   // which folder each mailbox of a project reads. Credentials are kept encrypted, like the GitHub sign-in.
@@ -192,7 +199,7 @@ export async function startServer({ root, dataDir, seal, unseal, port = 0, key: 
     if (!p) throw new Error('That project is gone.');
     if (current?.id === id) return current;
     await close();
-    const dir = path.join(dataDir, 'projects', id);
+    const dir = projDir(id);
     const token = tokenOf(id);
     // a project connected by Viti 0.1.0 (which only looked for its own backup place): look again. If the
     // backup is elsewhere (the older layout, say), the copy here was started empty: it is set aside
@@ -240,6 +247,7 @@ export async function startServer({ root, dataDir, seal, unseal, port = 0, key: 
     p.opened = Date.now();
     saveCfg();
     current = { id, host };
+    changed();
     return current;
   }
   async function close() {
@@ -254,7 +262,7 @@ export async function startServer({ root, dataDir, seal, unseal, port = 0, key: 
   // the last backup. Read straight from its database (read only), and kept until the database changes.
   const statsCache = new Map();
   function stats(p) {
-    const file = path.join(dataDir, 'projects', p.id, 'viti.sqlite');
+    const file = path.join(projDir(p.id), 'viti.sqlite');
     let stamp = 0;
     try {
       stamp = fs.statSync(file).mtimeMs + (fs.existsSync(file + '-wal') ? fs.statSync(file + '-wal').mtimeMs : 0);
@@ -329,7 +337,7 @@ export async function startServer({ root, dataDir, seal, unseal, port = 0, key: 
     const body = req.method === 'GET' ? {} : await readJson(req, url.pathname.startsWith('/app/mail/send/') ? 40 * 1024 * 1024 : 64 * 1024);
     const p = url.pathname;
     let m0;
-    if (p === '/app/state' && req.method === 'GET') return send(200, { ok: true, prefs: cfg.prefs, account: tokens[ACCOUNT] ? cfg.account || null : null, canSignIn: !!GITHUB_CLIENT_ID, projects: cfg.projects.map(view).sort((a, b) => b.opened - a.opened || b.added - a.added), current: current?.id || null });
+    if (p === '/app/state' && req.method === 'GET') return send(200, { ok: true, prefs: cfg.prefs, desktop: !!desktop, projectsDir: projectsRoot(), account: tokens[ACCOUNT] ? cfg.account || null : null, canSignIn: !!GITHUB_CLIENT_ID, projects: cfg.projects.map(view).sort((a, b) => b.opened - a.opened || b.added - a.added), current: current?.id || null });
     if (p === '/app/signin/start' && req.method === 'POST') {
       if (!GITHUB_CLIENT_ID) return send(400, { ok: false, error: 'Signing in with GitHub is not set up in this build of Viti yet. Use a token for now.' });
       const r = await ghPost(GH_WEB + '/login/device/code', { client_id: GITHUB_CLIENT_ID, scope: SCOPE });
@@ -487,8 +495,63 @@ export async function startServer({ root, dataDir, seal, unseal, port = 0, key: 
       if (['system', 'light', 'dark'].includes(body.theme)) cfg.prefs.theme = body.theme;
       if (/^#[0-9a-f]{6}$/i.test(body.accent || '')) cfg.prefs.accent = body.accent.toLowerCase();
       if (body.welcomed === true) cfg.prefs.welcomed = true;
+      if (typeof body.tray === 'boolean') cfg.prefs.tray = body.tray;
+      if (typeof body.startup === 'boolean') {
+        cfg.prefs.startup = body.startup;
+        desktop?.setStartup?.(body.startup);
+      }
       saveCfg();
+      changed();
       return send(200, { ok: true, prefs: cfg.prefs });
+    }
+    // ---- where the projects are kept: moved to a folder you choose (closed and copied, then the old copy removed)
+    if (p === '/app/data-location' && req.method === 'POST') {
+      if (!desktop?.pickFolder) return send(400, { ok: false, error: 'Only in the app.' });
+      const to = await desktop.pickFolder(projectsRoot());
+      if (!to) return send(200, { ok: true, cancelled: true });
+      const target = path.join(to, 'Viti projects');
+      if (path.resolve(target) === path.resolve(projectsRoot())) return send(200, { ok: true, where: target });
+      try {
+        await close();
+        fs.mkdirSync(target, { recursive: true });
+        const from = projectsRoot();
+        if (fs.existsSync(from)) fs.cpSync(from, target, { recursive: true, errorOnExist: false });
+        const before = cfg.projectsDir;
+        cfg.projectsDir = target;
+        saveCfg();
+        // (the old copy goes only once everything is safely in the new place)
+        if (fs.existsSync(from) && fs.readdirSync(from).every((id) => fs.existsSync(path.join(target, id)))) fs.rmSync(from, { recursive: true, force: true });
+        console.log('projects moved from', before || 'the data folder', 'to', target);
+        return send(200, { ok: true, where: target });
+      } catch (e) {
+        return send(500, { ok: false, error: `They could not be moved: ${e.message}` });
+      }
+    }
+    // ---- a project as a .zip of readable files (boards as markdown and JSON, reports, chats, pictures, files)
+    if ((m0 = p.match(/^\/app\/projects\/([a-f0-9]+)\/export$/)) && req.method === 'POST') {
+      const proj = cfg.projects.find((x) => x.id === m0[1]);
+      if (!proj) return send(404, { ok: false, error: 'That project is gone.' });
+      const dbFile = path.join(projDir(proj.id), 'viti.sqlite');
+      if (!fs.existsSync(dbFile)) return send(400, { ok: false, error: 'Open the project once first: there is nothing of it on this computer yet.' });
+      const name = proj.repo.split('/')[1];
+      const where = desktop?.saveFile ? await desktop.saveFile(`${name}-viti-${new Date().toISOString().slice(0, 10)}.zip`) : path.join(dataDir, `${name}-export.zip`);
+      if (!where) return send(200, { ok: true, cancelled: true });
+      try {
+        const hub = current?.id === proj.id ? current.host.hub : null;
+        const host = hub ? null : await openProject({ dbFile, env: { GITHUB_DIR: name }, user: proj.user || { email: 'export@viti' } });
+        const h = hub || host.hub;
+        const dir = h.mirror.dir;
+        h.mirror.dir = name;
+        const files = {};
+        for (const k of h.mirror.allKeys()) Object.assign(files, h.mirror.filesFor(k));
+        h.mirror.dir = dir;
+        if (host) host.ctx.close();
+        fs.writeFileSync(where, zip(files));
+        desktop?.reveal?.(where);
+        return send(200, { ok: true, where, files: Object.values(files).filter((v) => v != null).length });
+      } catch (e) {
+        return send(500, { ok: false, error: `The export did not work: ${e.message}` });
+      }
     }
     if (p === '/app/projects' && req.method === 'POST') {
       // with your GitHub sign-in, or with a pasted token of its own
@@ -529,7 +592,7 @@ export async function startServer({ root, dataDir, seal, unseal, port = 0, key: 
         delete tokens[proj.id];
         save(tokFile, tokens);
         saveCfg();
-        fs.rmSync(path.join(dataDir, 'projects', proj.id), { recursive: true, force: true });
+        fs.rmSync(projDir(proj.id), { recursive: true, force: true });
         return send(200, { ok: true });
       }
     }
@@ -601,6 +664,10 @@ export async function startServer({ root, dataDir, seal, unseal, port = 0, key: 
   return {
     url: `http://127.0.0.1:${server.address().port}`,
     key,
+    // for the window: open a project by its id (the jump list, the tray), and what to list there
+    openProject: (id) => open(id),
+    recent,
+    prefs: () => ({ ...cfg.prefs }),
     async stop() {
       clearInterval(mailTimer);
       await close();

@@ -113,6 +113,7 @@ function projectMenu(e, p) {
   menu(r.left - 140, r.bottom + 4, [
     { label: 'Open', fn: () => open(p) },
     { label: 'Open on GitHub', fn: () => window.open(`https://github.com/${p.repo}`) },
+    { label: 'Export…', fn: () => exportProject(p) },
     { label: 'Use a token…', fn: () => newToken(p) },
     { label: 'Remove from Viti…', danger: true, fn: () => remove(p) },
   ]);
@@ -362,6 +363,64 @@ async function newToken(p) {
   await box;
 }
 
+// a project as a .zip of readable files (boards, reports, chats, mail, pictures), to keep or to look through
+async function exportProject(p) {
+  try {
+    const r = await call('POST', `/app/projects/${p.id}/export`);
+    if (!r.cancelled) toast(`Exported ${r.files} files to ${r.where}`);
+  } catch (x) {
+    toast(x.message, true);
+  }
+}
+
+// ---- Settings: the look, Windows (the tray, starting with it), and where the projects are kept
+function settings() {
+  const prefs = state.prefs || {};
+  const toggle = (key, title, text) => {
+    const box = h('input', { type: 'checkbox', checked: !!prefs[key], onchange: async () => {
+      try {
+        const r = await call('PUT', '/app/prefs', { [key]: box.checked });
+        state.prefs = r.prefs;
+      } catch (x) {
+        box.checked = !box.checked;
+        toast(x.message, true);
+      }
+    } });
+    return h('label', { class: 'set-row' }, box, h('span', {}, h('b', {}, title), h('small', {}, text)));
+  };
+  const where = h('code', { class: 'set-path' }, state.projectsDir || '');
+  const move = h('button', { class: 'btn small ghost', type: 'button', onclick: async () => {
+    move.disabled = true;
+    try {
+      const r = await call('POST', '/app/data-location');
+      if (!r.cancelled) {
+        state.projectsDir = r.where;
+        where.textContent = r.where;
+        toast('Your projects are now kept there.');
+      }
+    } catch (x) {
+      toast(x.message, true);
+    }
+    move.disabled = false;
+  } }, 'Move…');
+  const body = h(
+    'div',
+    { class: 'look settings' },
+    ...appearanceControls(),
+    state.desktop
+      ? [
+          h('p', { class: 'label' }, 'Windows'),
+          toggle('tray', 'Keep Viti running in the tray', 'Closing the window leaves Viti in the notification area, so new mail still comes in. Quit it from the tray icon.'),
+          toggle('startup', 'Start with Windows', 'Viti starts when you sign in to Windows (into the tray, when that is on).'),
+          h('p', { class: 'label' }, 'Where your projects are kept'),
+          h('div', { class: 'set-where' }, where, move),
+          h('small', { class: 'set-note' }, 'The copies on this computer. Everything is also backed up to each repository on GitHub.'),
+        ]
+      : [],
+  );
+  modal('Settings', body, [{ label: 'Done', value: true, primary: true }]);
+}
+
 async function remove(p) {
   const r = await modal(`Remove ${p.repo}?`, h('p', {}, 'It is taken off your list and its copy on this computer is deleted. What was backed up stays on GitHub, so connecting it again brings it all back.'), [
     { label: 'Cancel', value: false },
@@ -378,5 +437,5 @@ async function remove(p) {
 }
 
 document.getElementById('about').addEventListener('click', () => openAbout());
-document.getElementById('look').addEventListener('click', () => modal('Appearance', h('div', { class: 'look' }, ...appearanceControls()), [{ label: 'Done', value: true, primary: true }]));
+document.getElementById('look').addEventListener('click', settings);
 load().catch((e) => toast(e.message, true));

@@ -491,3 +491,8 @@ body.noanim .ps-thumb, body.noanim .ps-fill { transition: none; }
 .emoji-btn .ic { width: 20px; height: 20px; }
 .item.doc .dicon .ic { width: 20px; height: 20px; }
 .mail-row .clip .ic { width: 13px; height: 13px; }
+
+/* less motion, when Windows is asked for it (Accessibility > Visual effects > Animation effects off) */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}

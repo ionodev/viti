@@ -15,6 +15,8 @@ export function h(tag, props = {}, ...kids) {
     else el.setAttribute(k, v);
   }
   for (const kid of kids.flat()) if (kid != null && kid !== false) el.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
+  // (a button that is only an icon is named for screen readers by its tooltip)
+  if (tag === 'button' && el.title && !el.hasAttribute('aria-label') && !/\w/.test(el.textContent)) el.setAttribute('aria-label', el.title);
   return el;
 }
 

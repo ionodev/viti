@@ -69,6 +69,14 @@ details.how li { margin: 4px 0; }
 .spin { width: 34px; height: 34px; border-radius: 50%; border: 3px solid var(--accent-soft); border-top-color: var(--accent); animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .look { display: grid; gap: 4px; }
+.settings .label { margin-top: 10px; }
+.dialog .set-row { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel-2); cursor: pointer; }
+.dialog .set-row input { flex: none; width: auto; margin: 3px 0 0; accent-color: var(--accent); }
+.set-row span { display: flex; flex-direction: column; }
+.set-row b { font: 600 13.5px var(--font); }
+.set-row small, .set-note { color: var(--text-3); font-size: 12.5px; }
+.set-where { display: flex; gap: 8px; align-items: center; }
+.set-path { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 6px 9px; border-radius: 8px; background: var(--panel-2); border: 1px solid var(--border); font: 12px var(--code); }
 
 /* signing in with GitHub, and picking a repository */
 .top-right { display: flex; align-items: center; gap: 10px; }
