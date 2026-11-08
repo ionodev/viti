@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { startServer } from './server.js';
+import { startPinchZoom } from './touchpad.js';
 import updater from 'electron-updater';
 
 const { autoUpdater } = updater;
@@ -287,6 +288,8 @@ app.on('second-instance', (e, argv) => {
   else showWindow();
 });
 app.whenReady().then(start);
+// (Linux under X11: pinch to zoom, read from the touchpad gesture service)
+app.whenReady().then(startPinchZoom);
 // (a Mac: clicking Viti in the Dock brings the window back)
 app.on('activate', showWindow);
 app.on('window-all-closed', () => app.quit());

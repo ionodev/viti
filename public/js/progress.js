@@ -8,6 +8,7 @@
 // down the tower as you zoom, so there is no limit to how far in you can go.
 import { api } from './api.js';
 import { h, ago, stamp, toast, infoButton } from './ui.js';
+import { wheelZoomer } from './wheelzoom.js';
 
 const R = 0.8; // each stone is this much of the width of the one below
 const ASP = 0.56; // how tall a stone is compared to its width
@@ -358,6 +359,7 @@ export class Progress {
     const from = { x: v.x, y: v.y, s: v.s };
     const t0 = performance.now();
     cancelAnimationFrame(this.flight);
+    this.wheelZoom?.cancel();
     const step = (now) => {
       const t = Math.min(1, (now - t0) / 500);
       const e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
@@ -379,7 +381,8 @@ export class Progress {
         e.preventDefault();
         cancelAnimationFrame(this.flight);
         const r = cv.getBoundingClientRect();
-        this.zoomAt(e.clientX - r.left, e.clientY - r.top, Math.exp(-e.deltaY * 0.0017));
+        this.wheelZoom ??= wheelZoomer((x, y, f) => this.zoomAt(x, y, f), 0.0017);
+        this.wheelZoom(e, e.clientX - r.left, e.clientY - r.top);
       },
       { passive: false },
     );
