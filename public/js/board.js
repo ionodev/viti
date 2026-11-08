@@ -6,6 +6,7 @@ import { api, uploadImage, uploadPdf } from './api.js';
 import { h, toast, typing, menu, lightbox, promptBox } from './ui.js';
 import { renderInto, highlight } from './md.js';
 import { settings } from './settings.js';
+import { wheelZoomer } from './wheelzoom.js';
 
 export const NOTE = { yellow: '#f6d66b', white: '#fbf8f0', red: '#f19a92', orange: '#f5a85a', green: '#a9d6a0', blue: '#9cc7e6', purple: '#c9aee3' };
 const LEGACY = { pink: 'red', cream: 'white', gold: 'orange' }; // names notes were saved with before
@@ -213,8 +214,10 @@ export class Board {
   }
   onWheel(e) {
     e.preventDefault();
-    if (e.ctrlKey || e.metaKey) this.zoomAt(e.clientX, e.clientY, Math.exp(-e.deltaY * (e.deltaMode ? 0.05 : 0.01)));
-    else {
+    if (e.ctrlKey || e.metaKey) {
+      this.wheelZoom ??= wheelZoomer((x, y, f) => this.zoomAt(x, y, f), 0.01);
+      this.wheelZoom(e, e.clientX, e.clientY);
+    } else {
       const k = e.deltaMode ? 16 : 1;
       this.view.x -= e.deltaX * k;
       this.view.y -= e.deltaY * k;

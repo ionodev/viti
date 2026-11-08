@@ -5,6 +5,7 @@
 import { S, imageUrl, sectionById, sectionLabel } from './state.js';
 import { api } from './api.js';
 import { h, toast, infoButton } from './ui.js';
+import { wheelZoomer } from './wheelzoom.js';
 
 const NS = 'http://www.w3.org/2000/svg';
 const el = (tag, attrs = {}, ...kids) => {
@@ -277,13 +278,13 @@ export class Overview {
       'wheel',
       (e) => {
         e.preventDefault();
-        const f = Math.exp(-e.deltaY * 0.0015);
-        const k = Math.min(4, Math.max(0.1, this.view.k * f));
         const r = this.svg.getBoundingClientRect();
-        const px = e.clientX - r.left;
-        const py = e.clientY - r.top;
-        this.view = { k, x: px - ((px - this.view.x) / this.view.k) * k, y: py - ((py - this.view.y) / this.view.k) * k };
-        this.place();
+        this.wheelZoom ??= wheelZoomer((px, py, f) => {
+          const k = Math.min(4, Math.max(0.1, this.view.k * f));
+          this.view = { k, x: px - ((px - this.view.x) / this.view.k) * k, y: py - ((py - this.view.y) / this.view.k) * k };
+          this.place();
+        }, 0.0015);
+        this.wheelZoom(e, e.clientX - r.left, e.clientY - r.top);
       },
       { passive: false },
     );
